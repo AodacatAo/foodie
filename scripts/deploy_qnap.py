@@ -111,7 +111,7 @@ def pack():
     print("== pack: 打包代码 ==")
     with tarfile.open(f"{STAGE}/code.tgz", "w:gz") as t:
         for rel in ["backend/app", "backend/requirements.txt", "frontend/dist",
-                    ".env", "Dockerfile", ".dockerignore", "docker-compose.yml"]:
+                    ".env", "Dockerfile", ".dockerignore", "docker-compose.yml", "wechat-notify"]:
             t.add(f"{LOCAL_ROOT}/{rel}", arcname=rel)
 
     for f in ("code.tgz", "data.tgz"):

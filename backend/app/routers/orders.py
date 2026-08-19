@@ -1,13 +1,15 @@
 """点单落单：下单快照、订单列表、删除。"""
 import threading
 
+import httpx
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models import Order, Recipe
+from ..config import settings
 from ..schemas import OrderCreate, OrderListOut, OrderOut
-from ..services import wechat_notify
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
 
@@ -44,10 +46,20 @@ def create_order(payload: OrderCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(order)
 
-    # 异步微信通知（不阻塞下单响应；失败仅记日志）
-    detail = "、".join(f"{i['title']}×{i['qty']}" for i in items)
-    text = f"📋 新订单：{order.person or '家人'} 点了 {len(items)} 道菜 · 合计 ¥{total}\n{detail}"
-    threading.Thread(target=wechat_notify.send_wechat_text, args=(text,), daemon=True).start()
+    # 异步微信通知：经 HTTP 调用独立服务 wechat-notify（解耦；失败仅记日志）
+    def _notify():
+        if not settings.wechat_notify_url:
+            return
+        detail = "、".join(f"{i['title']}×{i['qty']}" for i in items)
+        text = f"📋 新订单：{order.person or '家人'} 点了 {len(items)} 道菜 · 合计 ¥{total}\n{detail}"
+        headers = {"Authorization": f"Bearer {settings.notify_token}"} if settings.notify_token else {}
+        try:
+            with httpx.Client(timeout=15) as client:
+                client.post(settings.wechat_notify_url, json={"text": text}, headers=headers)
+        except Exception as e:
+            print(f"[order-notify] 推送失败: {e}")
+
+    threading.Thread(target=_notify, daemon=True).start()
 
     return order
 
