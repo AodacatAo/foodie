@@ -26,17 +26,3 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
-
-  # 外网访问隧道（免费；每次重启地址会变，日志里可见）
-  foodie-tunnel:
-    image: cloudflare/cloudflared:latest
-    container_name: foodie-tunnel
-    restart: always
-    command: tunnel --url http://foodie:8080 --no-autoupdate --protocol http2
-    depends_on:
-      - foodie
-    logging:
-      driver: json-file
-      options:
-        max-size: "5m"
-        max-file: "2"

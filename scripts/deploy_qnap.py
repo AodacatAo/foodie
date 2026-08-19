@@ -192,13 +192,7 @@ def build(conn):
 
 
 def up(conn):
-    print("== up: 准备隧道镜像 + compose 启动 ==")
-    # cloudflared 也来自 Hub；不可达时经镜像源拉取并打回原名
-    mirror = _pick_mirror(conn)
-    if mirror:
-        out, _ = ssh(conn, f"{DOCKER} pull {mirror}/cloudflare/cloudflared:latest 2>&1 | tail -2 "
-                           f"&& {DOCKER} tag {mirror}/cloudflare/cloudflared:latest cloudflare/cloudflared:latest", timeout=900)
-        print(out.strip()[:400])
+    print("== up: compose 启动 ==")
     out, err = ssh(conn, f"cd {NAS_DIR} && {DOCKER} compose up -d 2>&1", timeout=600)
     print(out.strip()[:800])
     if err.strip():
@@ -208,11 +202,6 @@ def up(conn):
     print(out.strip())
     out, _ = ssh(conn, f"curl -s --max-time 8 http://127.0.0.1:8080/api/health")
     print("NAS 本机 health:", out.strip()[:200])
-    out, _ = ssh(conn, f"{DOCKER} logs foodie-tunnel 2>&1 | grep -o 'https://[a-z-]*\\.trycloudflare\\.com' | head -1")
-    if out.strip():
-        print("外网隧道地址:", out.strip())
-    else:
-        print("外网隧道地址: 尚未就绪（稍后 docker logs foodie-tunnel 查看）")
 
 
 def main():

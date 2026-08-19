@@ -437,21 +437,19 @@ GET/POST/PUT/DELETE /api/locations        常用位置
 |---|---|---|
 | 本机 | http://127.0.0.1:8080 | 始终可用 |
 | 局域网 | http://<电脑IP>:8080（启动时打印，设置页可查） | 服务监听 0.0.0.0；手机需同一 Wi-Fi |
-| 外网 | `./scripts/tunnel.sh` 生成的 https://xxx.trycloudflare.com | Cloudflare 免费隧道，临时地址每次启动变化；固定域名需免费账号+自有域名改命名隧道 |
 
-**访问密码**：`.env` 配 `ACCESS_TOKEN` 后，**只有外网请求需要登录**——经隧道访问时按 `Cf-Connecting-Ip` 判断客户端 IP，公网 IP 才要求密码；局域网/本机直连一律免登录。登录一次 Cookie 有效 1 年（`POST /api/login`）。前端 401 时弹出登录遮罩。
+**访问密码**：`.env` 配 `ACCESS_TOKEN` 后，**只有非局域网请求需要登录**（按 `Cf-Connecting-Ip` 判断真实客户端 IP，公网 IP 才要求密码）；局域网/本机直连一律免登录。登录一次 Cookie 有效 1 年（`POST /api/login`）。前端 401 时弹出登录遮罩。当前未接公网隧道，鉴权保持防御性保留。
 
 **移动端**：≤768px 时顶部导航切换为底部 Tab 栏（菜谱/餐厅/导入/草稿/设置）；卡片两列、筛选栏两列、表单单列；局域网 http 下浏览器禁用 GPS → 按出口 IP 网络定位兜底（ipinfo.io → ip-api.com 双源）。
 
 **已知坑**：
 - `socket.getaddrinfo(本机.local)` 在部分网络会挂起 → `/api/net` 与 start.sh 用 `ipconfig getifaddr` + 线程超时
 - macOS 防火墙首次会询问是否允许 Python 接收连接，需点允许；路由器开 AP 隔离会挡设备互访
-- trycloudflare 边缘在境外（本机实测走 sjc10），国内速度一般；要求快可换 cpolar/花生壳（国内节点）或 frp + 香港轻量 VPS
 
 ### NAS 容器化部署（QNAP <NAS-IP>，常驻服务）
 
 **结构**（`/share/ZFS2_DATA/foodie`）：
-- `Dockerfile` + `docker-compose.yml`：`foodie`（应用，端口 8080，卷挂 `./data:/app/backend/data`）+ `foodie-tunnel`（cloudflared HTTP/2 隧道，外网常驻）
+- `Dockerfile` + `docker-compose.yml`：`foodie`（应用，端口 8080，卷挂 `./data:/app/backend/data`；公网隧道已移除，仅局域网访问）
 - 数据（DB/媒体/whisper 模型/浏览器登录态）全部在 `./data`，重建容器不丢
 - 镜像内 `playwright install chrome`（npmmirror 加速）满足 `channel="chrome"`；容器内 root 运行 → 爬虫启动参数 `chromium_sandbox=(os.geteuid() != 0)`
 
@@ -461,8 +459,6 @@ GET/POST/PUT/DELETE /api/locations        常用位置
 - 数据库迁移用 sqlite `backup()` API 做一致性快照（服务器运行中也安全）
 - 登录态与数据迁移后，Mac 端服务应停止，避免两份数据分叉
 
-**访问**：局域网 `http://<NAS-IP>:8080`（免密）；外网 = NAS 上 foodie-tunnel 日志中的 trycloudflare 地址（密码同 `.env` ACCESS_TOKEN；隧道重启地址会变）。
-- 查看当前外网地址：`docker exec foodie-tunnel` 日志或 `docker logs foodie-tunnel 2>&1 | grep -o 'https://[a-z-]*\.trycloudflare\.com' | tail -1`
-- **注意**：Docker 网桥内隧道请求的来源是私网 IP，鉴权判断必须优先信任 `Cf-Connecting-Ip` 头（cloudflared 强制覆盖），否则外网会被误判为内网免登录
+**访问**：局域网 `http://<NAS-IP>:8080`（免密）。公网访问已移除（2026-08）；如未来需要可重新引入内网穿透方案，鉴权中间件已保留（`Cf-Connecting-Ip` 判断 + `ACCESS_TOKEN`）。
 - Mac 端不再常驻运行（避免双数据源）；临时用可 `./scripts/start.sh`，数据以 NAS 为准
 
