@@ -1,0 +1,42 @@
+# 食集 · NAS 部署（QNAP Container Station / Docker Compose）
+# 用法: docker compose up -d --build   （data/ 与本目录平级，需先迁移数据）
+services:
+  foodie:
+    build: .
+    container_name: foodie
+    restart: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/backend/data
+    env_file:
+      - .env
+    # 内存上限（实际约 250MB，2GB 是保险丝，防爬虫任务失控）
+    mem_limit: 2g
+    # 日志轮转：单文件 10MB，保留 3 个
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # 健康检查：每 30s 探测 /api/health，3 次失败自动重启（防进程卡死）
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # 外网访问隧道（免费；每次重启地址会变，日志里可见）
+  foodie-tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: foodie-tunnel
+    restart: always
+    command: tunnel --url http://foodie:8080 --no-autoupdate --protocol http2
+    depends_on:
+      - foodie
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"

@@ -1,0 +1,146 @@
+/* ============ 食集设计系统 ============ */
+:root {
+  --brand: #e5533c;          /* 主色：食集橙红 */
+  --brand-deep: #c9442e;     /* 深一档 */
+  --brand-soft: #fdeeea;     /* 浅底 */
+  --brand-grad: linear-gradient(135deg, #f06a4f 0%, #e5533c 100%);
+  --text: #333;
+  --text-2: #666;
+  --text-3: #999;
+  --bg: #faf7f3;             /* 暖米色背景 */
+  --card: #fff;
+  --line: #f0ebe4;
+  --shadow-sm: 0 1px 3px rgba(93, 63, 41, 0.05), 0 1px 2px rgba(93, 63, 41, 0.04);
+  --shadow-md: 0 4px 14px rgba(93, 63, 41, 0.08), 0 2px 6px rgba(93, 63, 41, 0.05);
+  --shadow-lg: 0 12px 32px rgba(93, 63, 41, 0.14), 0 4px 10px rgba(93, 63, 41, 0.08);
+  --radius: 14px;
+  --radius-sm: 10px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', sans-serif;
+  background:
+    radial-gradient(1200px 400px at 85% -100px, rgba(229, 83, 60, 0.05), transparent 60%),
+    radial-gradient(900px 300px at -10% 0, rgba(245, 166, 35, 0.04), transparent 60%),
+    var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  touch-action: manipulation;
+}
+a { -webkit-tap-highlight-color: transparent; }
+
+/* ---- 按钮 ---- */
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: 10px;
+  padding: 9px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  background: var(--brand);
+  color: #fff;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.15s;
+}
+button:hover { opacity: 0.92; }
+button:active { transform: scale(0.97); }
+button.secondary { background: #f3ede5; color: #6b5d4e; }
+button.secondary:hover { background: #ece4d8; opacity: 1; }
+button.ghost { background: transparent; color: var(--text-3); padding: 4px 8px; font-weight: 400; }
+button.ghost:hover { color: var(--brand); opacity: 1; }
+button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+/* ---- 表单 ---- */
+input, textarea, select {
+  width: 100%;
+  border: 1.5px solid #e7e0d6;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  background: #fff;
+  color: var(--text);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+textarea { resize: vertical; min-height: 120px; }
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(229, 83, 60, 0.12);
+}
+select { appearance: auto; }
+
+/* ---- 卡片 ---- */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid rgba(240, 235, 228, 0.6);
+}
+
+/* ---- 标签 / 徽章 ---- */
+.tag {
+  display: inline-block;
+  background: var(--brand-soft);
+  color: var(--brand-deep);
+  border-radius: 20px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  margin: 2px 4px 2px 0;
+}
+.badge {
+  display: inline-block;
+  background: #f3ede5;
+  color: #7a6a58;
+  border-radius: 20px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.muted { color: var(--text-3); font-size: 13px; }
+.error {
+  color: #d33;
+  background: #fdecec;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  border: 1px solid rgba(221, 51, 51, 0.15);
+}
+.empty {
+  text-align: center;
+  color: #b8ab9c;
+  padding: 70px 20px;
+  font-size: 14px;
+}
+.empty::before {
+  content: '🍽';
+  display: block;
+  font-size: 42px;
+  margin-bottom: 12px;
+  opacity: 0.75;
+}
+
+/* 主按钮渐变（用于关键操作，如"记录"/"保存"） */
+button.primary-grad { background: var(--brand-grad); box-shadow: 0 3px 10px rgba(229, 83, 60, 0.3); }
+button.primary-grad:hover { box-shadow: 0 5px 14px rgba(229, 83, 60, 0.38); opacity: 1; }
+
+/* ---- 滚动条 ---- */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: #d9cfc2; border-radius: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* 移动端基础优化：更大的点击区域 + 16px 字号防 iOS 聚焦缩放 */
+@media (max-width: 768px) {
+  button { padding: 11px 14px; }
+  input, textarea, select { font-size: 16px; }
+  select { background: #fff; }
+  .card { padding: 14px; }
+}

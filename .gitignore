@@ -1,0 +1,17 @@
+.env
+backend/.venv/
+__pycache__/
+*.pyc
+backend/data/
+frontend/node_modules/
+frontend/dist/
+backups/
+.DS_Store
+
+# 本地工具链与二进制（非源码，可重新下载）：cloudflared / npm-global / npm 缓存
+bin/
+*.log
+
+# 临时/敏感产物
+wechat-login-qr.png
+dsh-lan-proxy.js

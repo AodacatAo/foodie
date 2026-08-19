@@ -1,0 +1,18 @@
+# 构建上下文排除项
+backend/data
+backend/.venv
+frontend/node_modules
+frontend/src
+frontend/index.html
+frontend/package.json
+frontend/package-lock.json
+frontend/vite.config.js
+bin
+backups
+scripts
+ARCHITECTURE.md
+README.md
+*.md
+__pycache__
+*.pyc
+.DS_Store
