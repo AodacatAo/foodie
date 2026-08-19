@@ -19,6 +19,7 @@ NAS_PASS='<NAS密码>' python3 scripts/deploy_qnap.py all
 - 局域网访问：`http://<NAS-IP>:8080`（免登录）
 - 数据（数据库/图片/登录态/微信凭据）全部在 NAS 数据卷，**部署只更新代码、绝不覆盖线上数据**
 - 容器 `restart: always` + 健康检查自动拉起
+- 微信通知是**独立服务**（独立仓库 [wechat-notify](https://github.com/AodacatAo/wechat-notify)、独立 compose），按需单独部署，食集不含任何微信代码
 
 ## 本地开发运行
 
@@ -38,6 +39,8 @@ NAS_PASS='<NAS密码>' python3 scripts/deploy_qnap.py all
 | `XHS_COOKIE` | 小红书登录 cookie（链接抓取） | M1 抓取时 |
 | `ACCESS_TOKEN` | 访问密码（仅非局域网请求校验；目前无公网入口，防御性保留） | 否 |
 | `HOST` / `PORT` | 服务地址 | 否 |
+| `WECHAT_NOTIFY_URL` | 微信通知独立服务地址（下单时推送；服务部署见独立仓库 wechat-notify） | 否 |
+| `NOTIFY_TOKEN` | 微信通知服务的鉴权令牌（与独立服务配置一致） | 配了通知时 |
 
 ## 功能
 
@@ -80,11 +83,11 @@ Dockerfile / docker-compose.yml   容器化部署（微信通知服务在独立�
 ## 版本库
 
 - NAS Gitea：`nas-git:aodacat/foodie.git`（origin）
-- GitHub：`github.com:AodacatAo/foodie`（私有，代码已脱敏可公开）
+- GitHub：`github.com/AodacatAo/foodie`（**公开**，代码全量脱敏无任何敏感信息）
 
 ## 里程碑
 
 - [x] M1 菜谱：CRUD + FTS + 小红书抓取（OCR/Whisper）+ 草稿确认
 - [x] M2 餐厅：点评搜索/推荐菜真图/坐标/距离/就餐记录/评分
 - [x] M3 菜单点餐：上架/定价/分类/扫码点餐/购物车/下单/微信通知
-- [x] 基础设施：NAS 容器化部署、局域网访问、移动端适配、版本库双备份
+- [x] 基础设施：NAS 容器化部署、局域网访问、移动端适配、版本库双备份、微信通知独立服务
