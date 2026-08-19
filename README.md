@@ -60,13 +60,12 @@ NAS_PASS='<NAS密码>' python3 scripts/deploy_qnap.py all
 - **管理端**（`/#/menu`）：定价（点击内联编辑）、分类（预设热菜/凉菜/汤/主食/小吃/饮品/甜品 + 自定义）、点单记录（下单人/明细/合计/删除）、生成扫码二维码
 - **用户端**（`/#/order`，扫码直达）：美团式点餐——分类栏过滤、菜品卡片（图/名/价）、圆形 +/- 份数控件、底部购物车（已点清单/份数/总合计/清空）、填名字「✔ 下单」；**无任何管理入口**（隐藏导航、无定价、无做法预览）
 - **下单通知**：下单后 NAS 后端直接推送微信（iLink 官方协议，秒级送达，不依赖电脑）
-- **通用微信通知**：独立服务 `wechat-notify`（端口 8090，Bearer token 鉴权），供脚本/技能/自动化向微信发即时消息；下单通知由食集经 HTTP 调用该服务（完全解耦）
+- **通用微信通知**：下单时食集经 HTTP 调用独立的微信通知服务（**独立仓库/独立容器** `wechat-notify`，端口 8090，见其仓库 README）
 - 点单状态与管理端实时互通，下单自动清空购物车并生成订单记录
 
 ## 数据
 
 - SQLite（WAL）：`backend/data/foodie.db`；媒体 `backend/data/media/`
-- 微信凭据（独立服务）：`wechat-data/account.json`（wechat-notify 容器数据卷）
 - 备份：`./scripts/backup.sh`（建议定期执行）；`backups/` 存历史快照
 
 ## 目录结构
@@ -75,8 +74,7 @@ NAS_PASS='<NAS密码>' python3 scripts/deploy_qnap.py all
 backend/    FastAPI 应用（app/routers · app/services · app/models，data/ 运行时数据）
 frontend/   Vue3 + Vite SPA（views/ 路由懒加载，dist/ 构建产物）
 scripts/    start.sh 启动 · deploy_qnap.py NAS 部署 · backup.sh 备份
-            order-notify.mjs 微信通知监视器（已由 NAS 后端直推取代，保留备用）
-Dockerfile / docker-compose.yml   容器化部署
+Dockerfile / docker-compose.yml   容器化部署（微信通知服务在独立仓库 wechat-notify）
 ```
 
 ## 版本库

@@ -11,6 +11,9 @@ services:
       - ./data:/app/backend/data
     env_file:
       - .env
+    # 容器内访问宿主机上其他服务（如独立部署的 wechat-notify）
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     # 内存上限（实际约 250MB，2GB 是保险丝，防爬虫任务失控）
     mem_limit: 2g
     # 日志轮转：单文件 10MB，保留 3 个
@@ -27,25 +30,3 @@ services:
       retries: 3
       start_period: 20s
 
-  # 微信即时通知独立服务（与食集解耦；POST /notify 推微信）
-  wechat-notify:
-    build: ./wechat-notify
-    container_name: wechat-notify
-    restart: always
-    ports:
-      - "8090:8090"
-    volumes:
-      - ./wechat-data:/data
-    environment:
-      - NOTIFY_TOKEN=${NOTIFY_TOKEN:-}
-    logging:
-      driver: json-file
-      options:
-        max-size: "5m"
-        max-file: "2"
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8090/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s

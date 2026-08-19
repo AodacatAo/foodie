@@ -111,7 +111,7 @@ def pack():
     print("== pack: 打包代码 ==")
     with tarfile.open(f"{STAGE}/code.tgz", "w:gz") as t:
         for rel in ["backend/app", "backend/requirements.txt", "frontend/dist",
-                    ".env", "Dockerfile", ".dockerignore", "docker-compose.yml", "wechat-notify"]:
+                    ".env", "Dockerfile", ".dockerignore", "docker-compose.yml"]:
             t.add(f"{LOCAL_ROOT}/{rel}", arcname=rel)
 
     for f in ("code.tgz", "data.tgz"):
@@ -204,6 +204,8 @@ def up(conn):
     print("== up: compose 启动 ==")
     out, err = ssh(conn, f"cd {NAS_DIR} && {DOCKER} compose up -d 2>&1", timeout=600)
     print(out.strip()[:800])
+    # 打通独立部署的微信通知服务网络（幂等；服务在独立仓库/独立 compose）
+    ssh(conn, f"{DOCKER} network connect foodie_default wechat-notify 2>/dev/null; true", timeout=60)
     if err.strip():
         print("[stderr]", err.strip()[:400])
     time.sleep(8)

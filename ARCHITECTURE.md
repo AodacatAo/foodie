@@ -480,7 +480,7 @@ GET/POST/PUT/DELETE /api/locations        常用位置
 **微信下单通知**（NAS 直推，秒级）：
 - 后端 `wechat_notify.py` 用 Python 实现 iLink 官方 sendmessage 协议（协议常量对齐腾讯 openclaw-weixin SDK 2.4.6：`iLink-App-Id: bot`、`AuthorizationType: ilink_bot_token`、`X-WECHAT-UIN` 随机、body 含 `base_info`）
 - 账号凭据：NAS 数据卷 `data/wechat_account.json`（登录产物迁移，不入版本库）
-- **解耦架构（2026-08 重构）**：独立容器 `wechat-notify`（node:22-slim 无依赖，监听 8090，Bearer token 鉴权，凭据在 `wechat-data/account.json` 数据卷）；食集下单时经 HTTP 调 `WECHAT_NOTIFY_URL`（compose 网络服务名），食集容器内**不含任何微信代码**
+- **彻底分离（2026-08 二次重构）**：`wechat-notify` 已成为**独立仓库/独立 compose**（NAS 目录 `/share/ZFS2_DATA/wechat-notify`，端口 8090，Bearer token 鉴权，凭据数据卷 `wechat-data/`）；食集下单时经 HTTP 调 `WECHAT_NOTIFY_URL=http://wechat-notify:8090/notify`（通过 `docker network connect foodie_default wechat-notify` 运行时打通，deploy 脚本幂等执行），食集容器内**不含任何微信代码**
 - 通用接口：`POST :8090/notify {text}`——供脚本/DSH skill 等主动触达微信；配套 DSH skill「wechat-notify」
 - 早期方案（Mac launchd 轮询 `scripts/order-notify.mjs`）已停用，脚本保留备用
 
