@@ -1,16 +1,32 @@
 # 🍜 食集 · 综合美食 Web
 
-本地部署的个人美食库。第一模块：**菜谱** —— 从小红书链接/手动内容导入，自动提炼「食材 + 步骤」，本地持久化，随时搜索查询。
+本地部署的个人美食库，三大模块：
+
+1. **菜谱** —— 小红书链接/手动内容导入，自动提炼「食材 + 步骤」
+2. **餐厅** —— 大众点评抓取 + 收藏/评分/距离/就餐记录
+3. **菜单 · 点餐** —— 上架菜谱成菜单，定价分类，手机扫码点餐（美团式），下单微信通知
 
 架构设计见 [`ARCHITECTURE.md`](ARCHITECTURE.md)。
 
-## 快速开始
+## 部署（推荐：NAS 常驻）
+
+项目以 Docker Compose 部署在 QNAP NAS 上常驻运行（局域网访问，7x24）：
+
+```bash
+NAS_PASS='<NAS密码>' python3 scripts/deploy_qnap.py all
+```
+
+- 局域网访问：`http://<NAS-IP>:8080`（免登录）
+- 数据（数据库/图片/登录态/微信凭据）全部在 NAS 数据卷，**部署只更新代码、绝不覆盖线上数据**
+- 容器 `restart: always` + 健康检查自动拉起
+
+## 本地开发运行
 
 ```bash
 ./scripts/start.sh
 ```
 
-首次运行会自动：构建前端（npm）→ 创建 Python 虚拟环境（venv）→ 安装依赖 → 启动服务并打开浏览器（默认 http://127.0.0.1:8080）。
+首次运行自动：构建前端 → 创建虚拟环境 → 安装依赖 → 启动（http://127.0.0.1:8080）。
 
 ### 配置（.env）
 
@@ -18,57 +34,57 @@
 
 | 配置 | 说明 | 必需 |
 |---|---|---|
-| `DEEPSEEK_API_KEY` | DeepSeek API Key（内容提炼） | 建议 |
-| `XHS_COOKIE` | 小红书登录 cookie（M2 链接抓取） | M2 起 |
+| `DEEPSEEK_API_KEY` | DeepSeek API Key（菜谱提炼） | 建议 |
+| `XHS_COOKIE` | 小红书登录 cookie（链接抓取） | M1 抓取时 |
+| `ACCESS_TOKEN` | 访问密码（仅非局域网请求校验；目前无公网入口，防御性保留） | 否 |
 | `HOST` / `PORT` | 服务地址 | 否 |
-
-> 建议使用**小红书小号**的 cookie，降低风控风险。
 
 ## 功能
 
-### 🍜 菜谱库（模块一）
-- **手动录入**：粘贴笔记正文 → 自动提炼食材/步骤（LLM，可配置）→ 草稿确认 → 入库
-- **小红书链接抓取**：粘贴链接 → 自动抓取（Playwright + 本地登录态）→ 图片下载 → OCR → LLM 提炼 → 草稿
-- **视频菜谱**：视频下载 → Whisper 本地语音转文字 → LLM 提炼步骤，详情页可播原视频
-- **搜索**：FTS 全文搜索（菜名/食材/步骤），标签过滤
-- **草稿箱**：LLM 提炼结果人工确认后才正式入库
+### 🍜 菜谱库
+- **手动录入**：粘贴笔记正文 → LLM 提炼食材/步骤 → 草稿确认 → 入库
+- **小红书链接抓取**：链接 → Playwright 登录态抓取 → 图片 OCR → LLM 提炼 → 草稿
+- **视频菜谱**：Whisper 本地语音转写 + 提炼，详情页可播视频
+- **搜索**：FTS 全文搜索（菜名/食材/步骤）+ 标签过滤 + 草稿箱
 
-### 🍽 餐厅库（模块二）
-- **手动录入 + 大众点评一键抓取**：贴点评链接自动填店名/菜系/人均/评分/地址/封面
-- **封面保证**：点评封面 > 手动图片 URL > 自动生成（菜系渐变+emoji+店名）
-- **找店**：菜系/人均/评分/距离/吃过与否筛选，按距离/人均/评分/最近吃过/次数排序
-- **定位**：浏览器自动定位（精度提示）、常用位置（家/公司）
-- **就餐记录**：记录一次（日期/评分/实付/备注），时间线 + 次数/平均统计
+### 🍽 餐厅库
+- **搜店添加**：按店名搜索（点评站内搜索 + 多引擎兜底）→ 一键添加（封面/人均/评分/坐标/推荐菜全自动）
+- **推荐菜**：真实点评 CDN 图片自动抓取，可从详情页手动重新同步
+- **筛选排序**：菜系/人均/我的评分/吃过与否/距离；按距离/人均/评分/最近吃过/次数
+- **定位**：浏览器定位 + 常用位置（家/公司）+ 手动坐标；局域网 http 下自动降级网络定位
+- **就餐记录**：卡片 +1 快速记录；详情页时间线（日期/照片/备注），可编辑、两步骤确认删除
+- **我的评分**：5 星半星点击 + 0.1 精度输入
+
+### 📋 菜单 · 点餐（模块三）
+- **上架**：菜谱卡片右上角「🍽 上架 / ✓ 已上架」切换（删除移至详情页）
+- **管理端**（`/#/menu`）：定价（点击内联编辑）、分类（预设热菜/凉菜/汤/主食/小吃/饮品/甜品 + 自定义）、点单记录（下单人/明细/合计/删除）、生成扫码二维码
+- **用户端**（`/#/order`，扫码直达）：美团式点餐——分类栏过滤、菜品卡片（图/名/价）、圆形 +/- 份数控件、底部购物车（已点清单/份数/总合计/清空）、填名字「✔ 下单」；**无任何管理入口**（隐藏导航、无定价、无做法预览）
+- **下单通知**：下单后 NAS 后端直接推送微信（iLink 官方协议，秒级送达，不依赖电脑）
+- 点单状态与管理端实时互通，下单自动清空购物车并生成订单记录
 
 ## 数据
 
-- SQLite（WAL 模式）：`backend/data/foodie.db`
-- 图片/快照：`backend/data/media/`、`backend/data/snapshots/`
-- 备份：`./scripts/backup.sh`（建议 cron/launchd 每日执行）
+- SQLite（WAL）：`backend/data/foodie.db`；媒体 `backend/data/media/`；微信凭据 `backend/data/wechat_account.json`
+- 备份：`./scripts/backup.sh`（建议定期执行）；`backups/` 存历史快照
 
 ## 目录结构
 
 ```
-backend/    FastAPI 应用（app/ 路由/服务/管线，data/ 运行时数据）
-frontend/   Vue3 + Vite SPA（dist/ 构建产物由后端托管）
-scripts/    start.sh 一键启动 · backup.sh 备份
+backend/    FastAPI 应用（app/routers · app/services · app/models，data/ 运行时数据）
+frontend/   Vue3 + Vite SPA（views/ 路由懒加载，dist/ 构建产物）
+scripts/    start.sh 启动 · deploy_qnap.py NAS 部署 · backup.sh 备份
+            order-notify.mjs 微信通知监视器（已由 NAS 后端直推取代，保留备用）
+Dockerfile / docker-compose.yml   容器化部署
 ```
+
+## 版本库
+
+- NAS Gitea：`nas-git:aodacat/foodie.git`（origin）
+- GitHub：`github.com:AodacatAo/foodie`（私有，代码已脱敏可公开）
 
 ## 里程碑
 
-- [x] M1 骨架：CRUD + FTS 搜索 + 手动录入 + 草稿确认
-- [x] M2 抓取：Playwright 登录态抓取（页面内嵌数据，绕开签名）+ 图片下载 + OCR + LLM 提炼
-  - 登录：`backend/.venv/bin/python scripts/xhs_login.py`（弹 Chrome 窗口手动登录一次，登录态存 `backend/data/xhs_profile/`）
-  - 注意：频繁自动化请求可能触发小红书 IP 风控（提示"IP 存在风险"），冷却后自动恢复；必要时切换网络
-- [x] M3 视频菜谱：视频下载 + Whisper 本地转写 + 提炼（模型：ModelScope 下载到 `backend/data/models/`）
-- [x] 模块二 N1-N5：餐厅库（CRUD/点评抓取/定位/就餐记录/打磨）
-
-## 开发
-
-```bash
-# 后端（热重载）
-cd backend && .venv/bin/uvicorn app.main:app --reload
-
-# 前端（Vite dev server，代理 /api → 8080）
-cd frontend && npm run dev
-```
+- [x] M1 菜谱：CRUD + FTS + 小红书抓取（OCR/Whisper）+ 草稿确认
+- [x] M2 餐厅：点评搜索/推荐菜真图/坐标/距离/就餐记录/评分
+- [x] M3 菜单点餐：上架/定价/分类/扫码点餐/购物车/下单/微信通知
+- [x] 基础设施：NAS 容器化部署、局域网访问、移动端适配、版本库双备份

@@ -462,3 +462,25 @@ GET/POST/PUT/DELETE /api/locations        常用位置
 **访问**：局域网 `http://<NAS-IP>:8080`（免密）。公网访问已移除（2026-08）；如未来需要可重新引入内网穿透方案，鉴权中间件已保留（`Cf-Connecting-Ip` 判断 + `ACCESS_TOKEN`）。
 - Mac 端不再常驻运行（避免双数据源）；临时用可 `./scripts/start.sh`，数据以 NAS 为准
 
+
+### 模块三 · 菜单/点餐（2026-08）
+
+**双端模型**：
+| 端 | 路由 | 能力 |
+|---|---|---|
+| 管理端 | `/#/menu` | 上架/下架、定价（内联编辑）、分类（预设+自定义）、点单记录管理、生成扫码二维码 |
+| 用户端 | `/#/order` | 美团式点餐：分类栏过滤、+/- 份数、底部购物车（清单/合计/清空）、填名字下单；**无导航/无定价/无做法预览**（路由 `meta.hideNav` 隐藏全部导航） |
+
+**数据模型**（recipes 表扩展 + orders 表）：
+- `on_menu`（上架）、`menu_at`（上架时间）、`menu_price`（元）、`menu_qty`（点单份数 0-99）、`menu_category`（分类）
+- `orders`：下单快照（person/items JSON/total/created_at）；下单即清空 menu_qty
+
+**API**：`POST /recipes/{id}/menu`（上架）、`DELETE .../menu`（下架）、`POST .../menu-price`、`POST .../menu-category`、`POST .../order`（份数）、`POST /orders`（下单快照+清购物车）、`GET/DELETE /orders`
+
+**微信下单通知**（NAS 直推，秒级）：
+- 后端 `wechat_notify.py` 用 Python 实现 iLink 官方 sendmessage 协议（协议常量对齐腾讯 openclaw-weixin SDK 2.4.6：`iLink-App-Id: bot`、`AuthorizationType: ilink_bot_token`、`X-WECHAT-UIN` 随机、body 含 `base_info`）
+- 账号凭据：NAS 数据卷 `data/wechat_account.json`（登录产物迁移，不入版本库）
+- 下单接口内异步线程推送，失败仅记日志不影响下单
+- 早期方案（Mac launchd 轮询 `scripts/order-notify.mjs`）已停用，脚本保留备用
+
+**扫码点餐**：管理端「📱 扫码点餐」按钮用 qrcode 库生成二维码，指向 `{origin}/#/order`（自动适配局域网 IP），手机同 Wi-Fi 微信扫码直达用户端。
