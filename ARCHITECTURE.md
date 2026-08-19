@@ -481,6 +481,7 @@ GET/POST/PUT/DELETE /api/locations        常用位置
 - 后端 `wechat_notify.py` 用 Python 实现 iLink 官方 sendmessage 协议（协议常量对齐腾讯 openclaw-weixin SDK 2.4.6：`iLink-App-Id: bot`、`AuthorizationType: ilink_bot_token`、`X-WECHAT-UIN` 随机、body 含 `base_info`）
 - 账号凭据：NAS 数据卷 `data/wechat_account.json`（登录产物迁移，不入版本库）
 - 下单接口内异步线程推送，失败仅记日志不影响下单
+- 通用接口：`POST /api/notify {text}`（受鉴权中间件保护）——供脚本/DSH skill 等主动触达微信；配套 DSH skill「wechat-notify」
 - 早期方案（Mac launchd 轮询 `scripts/order-notify.mjs`）已停用，脚本保留备用
 
 **扫码点餐**：管理端「📱 扫码点餐」按钮用 qrcode 库生成二维码，指向 `{origin}/#/order`（自动适配局域网 IP），手机同 Wi-Fi 微信扫码直达用户端。
