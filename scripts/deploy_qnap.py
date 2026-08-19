@@ -76,25 +76,37 @@ def connect():
 
 
 def pack():
-    print("== pack: 一致性备份 DB ==")
-    os.makedirs(f"{STAGE}/data_stage", exist_ok=True)
-    src = sqlite3.connect(f"{LOCAL_ROOT}/backend/data/foodie.db")
-    dst = sqlite3.connect(f"{STAGE}/data_stage/foodie.db")
-    with dst:
-        src.backup(dst)
-    dst.close()
-    src.close()
-
-    print("== pack: 复制数据目录（media/models/配置/浏览器登录态）==")
     data_root = f"{LOCAL_ROOT}/backend/data"
-    for name in os.listdir(data_root):
-        if name in ("foodie.db", "foodie.db-wal", "foodie.db-shm"):
-            continue  # db 已用备份 API 生成
-        p = os.path.join(data_root, name)
-        if os.path.isdir(p):
-            shutil.copytree(p, f"{STAGE}/data_stage/{name}", dirs_exist_ok=True)
-        else:
-            shutil.copy2(p, f"{STAGE}/data_stage/{name}")
+    # 数据包：仅当本地存在 data（首次部署迁移数据时）；日常部署只更新代码
+    if os.path.isdir(data_root) and os.path.exists(f"{data_root}/foodie.db"):
+        print("== pack: 一致性备份 DB ==")
+        os.makedirs(f"{STAGE}/data_stage", exist_ok=True)
+        src = sqlite3.connect(f"{data_root}/foodie.db")
+        dst = sqlite3.connect(f"{STAGE}/data_stage/foodie.db")
+        with dst:
+            src.backup(dst)
+        dst.close()
+        src.close()
+
+        print("== pack: 复制数据目录（media/models/配置/浏览器登录态）==")
+        for name in os.listdir(data_root):
+            if name in ("foodie.db", "foodie.db-wal", "foodie.db-shm"):
+                continue  # db 已用备份 API 生成
+            p = os.path.join(data_root, name)
+            if os.path.isdir(p):
+                shutil.copytree(p, f"{STAGE}/data_stage/{name}", dirs_exist_ok=True)
+            else:
+                shutil.copy2(p, f"{STAGE}/data_stage/{name}")
+
+        print("== pack: 打包数据 ==")
+        with tarfile.open(f"{STAGE}/data.tgz", "w:gz") as t:
+            t.add(f"{STAGE}/data_stage", arcname="data")
+    else:
+        print("== pack: 本地无 data（仅代码部署，线上数据不动）==")
+        try:
+            os.remove(f"{STAGE}/data.tgz")
+        except OSError:
+            pass
 
     print("== pack: 打包代码 ==")
     with tarfile.open(f"{STAGE}/code.tgz", "w:gz") as t:
@@ -102,13 +114,10 @@ def pack():
                     ".env", "Dockerfile", ".dockerignore", "docker-compose.yml"]:
             t.add(f"{LOCAL_ROOT}/{rel}", arcname=rel)
 
-    print("== pack: 打包数据 ==")
-    with tarfile.open(f"{STAGE}/data.tgz", "w:gz") as t:
-        t.add(f"{STAGE}/data_stage", arcname="data")
-
     for f in ("code.tgz", "data.tgz"):
-        sz = os.path.getsize(f"{STAGE}/{f}") / 1e6
-        print(f"   {f}: {sz:.1f} MB")
+        if os.path.exists(f"{STAGE}/{f}"):
+            sz = os.path.getsize(f"{STAGE}/{f}") / 1e6
+            print(f"   {f}: {sz:.1f} MB")
 
 
 def upload(conn):

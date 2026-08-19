@@ -33,6 +33,12 @@ export const api = {
   updateRecipe: (id, data) => req(`/recipes/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   publishRecipe: (id) => req(`/recipes/${id}/publish`, { method: 'POST' }),
   deleteRecipe: (id) => req(`/recipes/${id}`, { method: 'DELETE' }),
+  putOnMenu: (id) => req(`/recipes/${id}/menu`, { method: 'POST' }),
+  takeOffMenu: (id) => req(`/recipes/${id}/menu`, { method: 'DELETE' }),
+  toggleWant: (id) => req(`/recipes/${id}/want`, { method: 'POST' }),
+  setMenuPrice: (id, price) => req(`/recipes/${id}/menu-price`, { method: 'POST', body: JSON.stringify({ price }) }),
+  setOrderQty: (id, qty) => req(`/recipes/${id}/order`, { method: 'POST', body: JSON.stringify({ qty }) }),
+  setMenuCategory: (id, category) => req(`/recipes/${id}/menu-category`, { method: 'POST', body: JSON.stringify({ category }) }),
   listTags: () => req('/recipes/tags'),
   submitManual: (data) => req('/imports/manual', { method: 'POST', body: JSON.stringify(data) }),
   submitXhs: (url) => req('/imports', { method: 'POST', body: JSON.stringify({ url }) }),
@@ -71,6 +77,9 @@ export const api = {
   createLocation: (data) => req('/locations', { method: 'POST', body: JSON.stringify(data) }),
   deleteLocation: (id) => req(`/locations/${id}`, { method: 'DELETE' }),
   netInfo: () => req('/net'),
+  createOrder: (data) => req('/orders', { method: 'POST', body: JSON.stringify(data) }),
+  listOrders: (params = {}) => req(`/orders?${new URLSearchParams(params)}`),
+  deleteOrder: (id) => req(`/orders/${id}`, { method: 'DELETE' }),
 }
 
 export function mediaUrl(path) {

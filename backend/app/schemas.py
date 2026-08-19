@@ -63,6 +63,12 @@ class RecipeOut(BaseModel):
     steps: list[Step] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
     status: str
+    on_menu: bool = False
+    menu_want: bool = False
+    menu_at: datetime | None = None
+    menu_price: float | None = None
+    menu_qty: int = 0
+    menu_category: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -233,3 +239,22 @@ class UserLocationOut(BaseModel):
     lat: float
     lng: float
     created_at: datetime
+
+
+class OrderCreate(BaseModel):
+    person: str | None = None
+
+
+class OrderOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    person: str | None = None
+    items: list[dict] = Field(default_factory=list)
+    total: float = 0.0
+    created_at: datetime
+
+
+class OrderListOut(BaseModel):
+    total: int
+    items: list[OrderOut]

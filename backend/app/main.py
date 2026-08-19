@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from .config import PROJECT_ROOT, settings
 from .database import init_db
-from .routers import imports, locations, recipes, restaurants, search
+from .routers import imports, locations, orders, recipes, restaurants, search
 from .tasks.queue import start_worker, stop_worker
 
 AUTH_COOKIE = "foodie_token"
@@ -101,6 +101,7 @@ app.include_router(search.router)
 app.include_router(imports.router)
 app.include_router(restaurants.router)
 app.include_router(locations.router)
+app.include_router(orders.router)
 
 
 @app.get("/api/health")

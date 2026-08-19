@@ -179,3 +179,68 @@ def list_tags(db: Session) -> list[str]:
         if isinstance(row, list):
             tags.update(t for t in row if isinstance(t, str) and t.strip())
     return sorted(tags)
+
+
+def set_on_menu(db: Session, recipe_id: int, on_menu: bool) -> Recipe | None:
+    """上架/下架到菜单。上架时记录 menu_at。"""
+    recipe = db.get(Recipe, recipe_id)
+    if not recipe:
+        return None
+    recipe.on_menu = on_menu
+    if on_menu:
+        from datetime import datetime, timezone
+        recipe.menu_at = datetime.now(timezone.utc)
+    else:
+        recipe.menu_want = False
+        recipe.menu_at = None
+    db.commit()
+    db.refresh(recipe)
+    return recipe
+
+
+def toggle_want(db: Session, recipe_id: int) -> Recipe | None:
+    """切换「今天想吃」勾选（仅对已上架的菜有意义）。"""
+    recipe = db.get(Recipe, recipe_id)
+    if not recipe:
+        return None
+    recipe.menu_want = not recipe.menu_want
+    db.commit()
+    db.refresh(recipe)
+    return recipe
+
+
+
+def set_menu_price(db: Session, recipe_id: int, price: float | None) -> Recipe | None:
+    """设置/清除菜单价格。"""
+    recipe = db.get(Recipe, recipe_id)
+    if not recipe:
+        return None
+    recipe.menu_price = price
+    db.commit()
+    db.refresh(recipe)
+    return recipe
+
+
+
+def set_order_qty(db: Session, recipe_id: int, qty: int) -> Recipe | None:
+    """设置点单份数。"""
+    recipe = db.get(Recipe, recipe_id)
+    if not recipe:
+        return None
+    recipe.menu_qty = qty
+    recipe.menu_want = qty > 0  # 兼容旧字段语义
+    db.commit()
+    db.refresh(recipe)
+    return recipe
+
+
+
+def set_menu_category(db: Session, recipe_id: int, category: str | None) -> Recipe | None:
+    """设置菜单分类。"""
+    recipe = db.get(Recipe, recipe_id)
+    if not recipe:
+        return None
+    recipe.menu_category = category
+    db.commit()
+    db.refresh(recipe)
+    return recipe

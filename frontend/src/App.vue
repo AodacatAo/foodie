@@ -1,9 +1,10 @@
 <template>
   <div class="app">
-    <header class="topbar">
+    <header v-if="!$route.meta.hideNav" class="topbar">
       <router-link to="/" class="brand">🍜 食集</router-link>
       <nav class="desktop-nav">
         <router-link to="/">菜谱库</router-link>
+        <router-link to="/menu">菜单</router-link>
         <router-link to="/restaurants">餐厅库</router-link>
         <router-link to="/import">导入</router-link>
         <router-link :to="{ path: '/', query: { status: 'draft' } }">草稿箱</router-link>
@@ -15,11 +16,15 @@
     </main>
 
     <!-- 移动端底部导航 -->
-    <nav class="mobile-tabbar">
+    <nav v-if="!$route.meta.hideNav" class="mobile-tabbar">
       <router-link
         to="/"
         :class="{ active: $route.path === '/' && $route.query.status !== 'draft' }"
       ><span class="tab-icon">🍜</span><span>菜谱</span></router-link>
+      <router-link
+        to="/menu"
+        :class="{ active: $route.path === '/menu' }"
+      ><span class="tab-icon">📋</span><span>菜单</span></router-link>
       <router-link
         to="/restaurants"
         :class="{ active: $route.path.startsWith('/restaurant') }"

@@ -37,12 +37,13 @@
           <img v-if="r.cover_image" :src="mediaUrl(r.cover_image)" alt="" loading="lazy" decoding="async" />
           <span v-else class="cover-fallback">🍳</span>
           <span v-if="r.status === 'draft'" class="draft-badge">草稿</span>
+          <span v-if="r.on_menu" class="menu-badge">菜单中</span>
           <button
-            class="card-delete"
-            :class="{ confirming: confirmDel === r.id }"
-            :title="confirmDel === r.id ? '再点一次确认删除' : '删除'"
-            @click.stop.prevent="askDelete(r)"
-          >{{ confirmDel === r.id ? '确认？' : '🗑' }}</button>
+            class="menu-btn"
+            :class="{ on: r.on_menu }"
+            :title="r.on_menu ? '从菜单下架' : '上架到菜单'"
+            @click.stop.prevent="toggleMenu(r)"
+          >{{ r.on_menu ? '✓ 已上架' : '🍽 上架' }}</button>
         </div>
         <div class="body">
           <h3>{{ r.title }}</h3>
@@ -108,27 +109,19 @@ function toggleTag(t) {
   router.replace({ query: { ...route.query, tag: tagFilter.value || undefined } })
 }
 
-async function removeRecipe(r) {
+async function toggleMenu(r) {
   try {
-    await api.deleteRecipe(r.id)
-    await load()
+    if (r.on_menu) {
+      await api.takeOffMenu(r.id)
+      r.on_menu = false
+      r.menu_want = false
+    } else {
+      await api.putOnMenu(r.id)
+      r.on_menu = true
+    }
   } catch (e) {
     error.value = e.message
   }
-}
-
-const confirmDel = ref(null)
-let confirmTimer = null
-function askDelete(r) {
-  if (confirmDel.value === r.id) {
-    confirmDel.value = null
-    clearTimeout(confirmTimer)
-    removeRecipe(r)
-    return
-  }
-  confirmDel.value = r.id
-  clearTimeout(confirmTimer)
-  confirmTimer = setTimeout(() => { confirmDel.value = null }, 3000)
 }
 
 watch(() => route.query, () => {
@@ -179,16 +172,29 @@ onBeforeUnmount(() => clearTimeout(debounceTimer))
   background: #f5a623; color: #fff; font-size: 12px;
   border-radius: 10px; padding: 1px 8px;
 }
-.card-delete {
-  position: absolute; top: 8px; right: 8px;
-  background: rgba(0, 0, 0, 0.45); color: #fff;
-  border-radius: 50%; width: 30px; height: 30px;
-  padding: 0; font-size: 14px; line-height: 1;
-  display: none; align-items: center; justify-content: center;
+.menu-badge {
+  position: absolute; top: 8px; left: 8px;
+  background: rgba(46, 125, 50, 0.92); color: #fff; font-size: 12px;
+  border-radius: 10px; padding: 1px 8px;
 }
-.recipe-card:hover .card-delete { display: inline-flex; }
-.card-delete:hover { background: #d33; }
-.card-delete.confirming { background: #d33; width: auto; border-radius: 14px; padding: 0 10px; font-size: 12px; display: inline-flex; }
+.draft-badge + .menu-badge, .menu-badge + .menu-badge { display: none; }
+.menu-badge { margin-top: 0; }
+.draft-badge:not(:only-child) { top: 8px; }
+.menu-badge { top: 8px; }
+/* 草稿和菜单角标并存时错开 */
+.cover .draft-badge + .menu-badge { top: 30px; left: 8px; }
+.menu-btn {
+  position: absolute; top: 8px; right: 8px;
+  background: rgba(0, 0, 0, 0.5); color: #fff;
+  border-radius: 14px; padding: 4px 12px;
+  font-size: 12.5px; font-weight: 600;
+  display: none; align-items: center;
+  backdrop-filter: blur(4px);
+}
+.recipe-card:hover .menu-btn { display: inline-flex; }
+.menu-btn:hover { background: var(--brand); }
+.menu-btn.on { background: rgba(46, 125, 50, 0.92); }
+.menu-btn.on:hover { background: #1e6b22; }
 .body { padding: 12px 14px; }
 .body h3 { font-size: 15.5px; font-weight: 700; margin-bottom: 7px; color: #2f2a24; }
 .meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
@@ -200,8 +206,8 @@ onBeforeUnmount(() => clearTimeout(debounceTimer))
   .cover-fallback { font-size: 32px; }
   .body { padding: 8px 10px; }
   .body h3 { font-size: 14px; }
-  /* 触屏没有 hover：删除按钮常显 */
-  .card-delete { display: inline-flex; background: rgba(0, 0, 0, 0.45); width: 30px; height: 30px; }
-  .recipe-card:hover .card-delete { display: inline-flex; }
+  /* 触屏没有 hover：上架按钮常显 */
+  .menu-btn { display: inline-flex; padding: 4px 10px; font-size: 12px; }
+  .recipe-card:hover .menu-btn { display: inline-flex; }
 }
 </style>
