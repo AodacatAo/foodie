@@ -112,9 +112,18 @@ def pack():
 
 
 def upload(conn):
-    """QNAP 未启用 SFTP 子系统：改用 SSH exec 通道流式传 tar 并就地解包。"""
+    """QNAP 未启用 SFTP 子系统：改用 SSH exec 通道流式传 tar 并就地解包。
+
+    data.tgz 仅用于**首次部署**（NAS 上还没有数据库时迁移数据）；
+    已部署后跳过——绝不覆盖线上数据（历史上多次部署覆盖导致数据丢失）。
+    """
     print("== upload: 流式上传并解包 ==")
     for f in ("code.tgz", "data.tgz"):
+        if f == "data.tgz":
+            out, _ = ssh(conn, f"[ -f {NAS_DIR}/data/foodie.db ] && echo EXISTS || echo MISSING", timeout=30)
+            if "EXISTS" in out:
+                print("   data.tgz 跳过：NAS 已有数据库（保护线上数据，不覆盖）")
+                continue
         src = f"{STAGE}/{f}"
         t0 = time.time()
         chan = conn.get_transport().open_session()
