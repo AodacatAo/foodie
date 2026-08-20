@@ -494,3 +494,23 @@ GET/POST/PUT/DELETE /api/locations        常用位置
 - 早期方案（Mac launchd 轮询 `scripts/order-notify.mjs`）已停用，脚本保留备用
 
 **扫码点餐**：管理端「📱 扫码点餐」按钮用 qrcode 库生成二维码，指向 `{origin}/#/order`（自动适配局域网 IP），手机同 Wi-Fi 微信扫码直达用户端。
+
+---
+
+## 架构复盘 · P0/P1 落地记录（2026-08）
+
+对三模块整体复盘后，按优先级落地 P0/P1（其余 P2/P3 见复盘结论，暂缓）：
+
+| 项 | 结论 | 落地 |
+|---|---|---|
+| P0-1 密钥入镜像 | `.env` 曾被打进镜像层（Dockerfile `COPY .env`） | 移除 COPY + `.dockerignore` 排除 `.env`；配置改由 compose `env_file` 运行时注入（宿主目录 `.env`） |
+| P0-2 购物车位置 | 购物车原存服务端 `recipes.menu_qty`，多手机互相串扰、并发下单重复快照；且启动时无条件 `UPDATE menu_qty=1 WHERE menu_want=1` 会把「想吃」强行塞回购物车 | 购物车迁移到**每台设备前端 localStorage**；下单改前端提交明细、服务端按当前菜单校验 + 服务端价格快照；`menu_want` 回归纯管理端意愿标记；启动时无条件 UPDATE 删除；废弃的 `/order` 端点与 `menu_qty` 输出字段移除（列保留兼容） |
+| P1-1 迁移机制 | 加列靠 init_db 手工补丁（`_add_column_if_missing`），无版本记录 | `backend/app/migrations.py`：`schema_migrations` 表 + 版本化迁移（只增不改、防重复写法），init_db 事务内按序执行 |
+| P1-2 媒体缓存 | 前端 `?v=3` 手工版本号，改图忘 bump 就显示旧图 | 封面/推荐菜文件名带时间戳（新内容=新 URL），`mediaUrl` 去掉版本号；同步推荐菜前清空旧图目录 |
+| P1-3 NAS 数据备份 | **盘点结果：此前无任何备份**（未装 HBS3/HybridBackup、无快照计划、qsnapshot 配置为空） | `scripts/nas_backup.sh` + crontab 每日 04:15（deploy 幂等安装）：DB 容器内 sqlite backup API 一致性快照、media/快照/模型 rsync `--link-dest` 去重、wechat-notify 凭据一并覆盖，备份到**异池** zpool3（`/share/ZFS19_DATA/foodie-backups`，14 天 + `latest/`）；首跑已验证 integrity ok |
+
+**部署侧连带修复（复盘验证时发现）**：
+- compose 服务缺 `image:` 字段 → compose 默认镜像名 `foodie-foodie` 与 build 产物 `foodie:latest` 无关，**新代码构建后 up 永远不生效**；已显式 `image: foodie:latest`
+- 本 NAS（Container Station 3.1.2 + QTS 5.2.8）buildkit 构建上下文挂载报 `error creating zfs mount`（手动 zfs create 正常，属 dockerd 侧问题）→ deploy 构建固定 `DOCKER_BUILDKIT=0` 走经典构建器
+
+**验证**：本地冒烟（venv + 临时 DATA_DIR，订单合并/空车/下架/不存在菜品全路径 400/404 正确，重启迁移幂等）→ NAS 全量部署 → 线上 schema_migrations=1,2,3 → 真实下单（小炒黄牛肉×1+炝爆藕丁×2=¥114）微信通知 `sent` → 删除测试单。备份首跑 `integrity: ok`，去重生效（次日目录 14K）。

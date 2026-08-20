@@ -194,8 +194,10 @@ def build(conn):
     args = ""
     if mirror:
         args = f"--build-arg BASE_IMAGE={mirror}/library/python:3.11-slim"
+    # 注意：本机 NAS（CS 3.1.2 + QTS 5.2.8）buildkit 的构建上下文挂载会报
+    # "error creating zfs mount"，必须禁用 buildkit 走经典构建器
     # QNAP 无 nohup：用 setsid 完全脱离 SSH 会话
-    out, err = ssh(conn, f"cd {NAS_DIR} && setsid sh -c '{DOCKER} build -t foodie:latest {args} . > /tmp/foodie_build.log 2>&1' < /dev/null & echo started", timeout=60)
+    out, err = ssh(conn, f"cd {NAS_DIR} && setsid sh -c 'DOCKER_BUILDKIT=0 {DOCKER} build -t foodie:latest {args} . > /tmp/foodie_build.log 2>&1' < /dev/null & echo started", timeout=60)
     print(out.strip()[:200])
     if err.strip():
         print("[stderr]", err.strip()[:300])
