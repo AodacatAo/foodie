@@ -457,6 +457,7 @@ GET/POST/PUT/DELETE /api/locations        常用位置
 - 镜像内 `playwright install chrome`（npmmirror 加速）满足 `channel="chrome"`；容器内 root 运行 → 爬虫启动参数 `chromium_sandbox=(os.geteuid() != 0)`
 
 **部署**：`NAS_PASS='<nas密码>' python3 scripts/deploy_qnap.py all`（pack→upload→extract→build→up）。
+- compose 显式 `image: foodie:latest`：build 阶段打 tag 后 `compose up -d` 能检测到镜像变化并自动重建容器（否则 compose 默认镜像名 `foodie-foodie` 与 build 产物无关，新代码永远不生效——2026-08 部署时踩坑后修正）
 - QNAP 未启用 SFTP 子系统 → 上传走 SSH exec 通道流式 tar
 - docker CLI 全路径 `/share/ZFS1_DATA/.qpkg/container-station/bin/docker`
 - 数据库迁移用 sqlite `backup()` API 做一致性快照（服务器运行中也安全）

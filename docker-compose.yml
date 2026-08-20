@@ -3,6 +3,8 @@
 services:
   foodie:
     build: .
+    # 显式指定镜像名：deploy 的 build 阶段打 foodie:latest tag 后，up 阶段才能检测到镜像变化并重建容器
+    image: foodie:latest
     container_name: foodie
     restart: always
     ports:
