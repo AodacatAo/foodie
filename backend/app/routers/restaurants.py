@@ -1,4 +1,7 @@
 """餐厅路由：CRUD + 搜索 + 就餐记录。"""
+import shutil
+import time
+
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
 
@@ -125,14 +128,16 @@ def sync_recommended_dishes(restaurant_id: int, db: Session = Depends(get_db)):
         raise HTTPException(404, "未获取到推荐菜（点评页面可能未收录）")
     dishes = []
     media_sub = settings.media_dir / "dishes" / str(restaurant_id)
+    # 清理旧推荐菜图片（内容可换，新同步生成带时间戳的新文件名/新 URL）
+    shutil.rmtree(media_sub, ignore_errors=True)
     for i, dish in enumerate(names[:3], start=1):
-        target = media_sub / f"{i}.jpg"
+        target = media_sub / f"{i}-{int(time.time())}.jpg"
         ok = download_cover_url(dish["image_url"], target)  # 真实 CDN 图片
         if ok:
             normalize_image(target)  # webp 等转标准 jpg
         else:
             generate_dish_image(target, dish["name"])  # 兜底生成
-        dishes.append({"name": dish["name"], "image": f"dishes/{restaurant_id}/{i}.jpg"})
+        dishes.append({"name": dish["name"], "image": f"dishes/{restaurant_id}/{target.name}"})
     restaurant.recommended_dishes = dishes
     db.commit()
     db.refresh(restaurant)

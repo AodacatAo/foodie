@@ -64,7 +64,8 @@ async def auth_gate(request: Request, call_next):
 
     局域网/本机直连免登录；经隧道（或公网 IP）访问的需密码。
     登录接口和健康检查除外。
-    同时给静态资源加长缓存（/media 配合前端 ?v=N 版本号破坏缓存，/assets 为构建 hash 文件名）。
+    同时给静态资源加长缓存（/media 下内容可变的图片用带时间戳的文件名更新，
+    /assets 为构建 hash 文件名）。
     """
     path = request.url.path
     protected = path.startswith("/api/") or path.startswith("/media/")

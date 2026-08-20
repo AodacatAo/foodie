@@ -82,6 +82,7 @@ export const api = {
 }
 
 export function mediaUrl(path) {
-  // ?v=3：缓存版本号。图片内容更新时（如推荐菜换成真图）需要递增此值强制浏览器重新拉取
-  return path ? `/media/${path}?v=3` : null
+  // /media 带 immutable 长缓存头；内容可变的图片（封面/推荐菜）文件名含时间戳，
+  // 更新即新路径新 URL，浏览器自动拉新，无需手工 ?v= 版本号
+  return path ? `/media/${path}` : null
 }

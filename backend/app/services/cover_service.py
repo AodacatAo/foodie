@@ -220,15 +220,23 @@ def _wrap_text(text: str, max_chars: int) -> list[str]:
 
 
 def ensure_restaurant_cover(restaurant) -> None:
-    """保证餐厅有封面：URL 下载 → 本地生成兜底；更新 cover_image 相对路径。"""
+    """保证餐厅有封面：URL 下载 → 本地生成兜底；更新 cover_image 相对路径。
+
+    文件名带时间戳：内容可变的图片每次重新生成新路径（新 URL），配合 /media 的
+    immutable 长缓存头，浏览器自动拉新图，无需手工维护 ?v= 缓存版本号。
+    """
     if restaurant.cover_image and not restaurant.cover_image.startswith("http"):
         return  # 已是本地封面
     media_sub = settings.media_dir / "restaurants"
-    target = media_sub / f"{restaurant.id}.jpg"
+    target = media_sub / f"{restaurant.id}-{int(time.time())}.jpg"
     ok = False
     if restaurant.cover_image and restaurant.cover_image.startswith("http"):
         ok = download_cover_url(restaurant.cover_image, target)
     if not ok:
         ok = generate_restaurant_cover(target, restaurant.name, restaurant.cuisine)
     if ok and target.exists():
-        restaurant.cover_image = f"restaurants/{restaurant.id}.jpg"
+        # 清理同餐厅旧时间戳封面，避免孤儿文件累积
+        for old in media_sub.glob(f"{restaurant.id}-*.jpg"):
+            if old != target:
+                old.unlink(missing_ok=True)
+        restaurant.cover_image = f"restaurants/{target.name}"
