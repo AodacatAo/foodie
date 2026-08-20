@@ -11,3 +11,6 @@ faster-whisper>=1.0
 imageio-ffmpeg>=0.4.9
 python-multipart>=0.0.9
 zhconv
+reportlab>=4.0
+qrcode>=7.4
+

@@ -45,11 +45,17 @@ def _m003_menu_ordering(conn: Connection) -> None:
     _add_column_if_missing(conn, "recipes", "menu_category", "VARCHAR(50)")
 
 
+def _m004_order_status(conn: Connection) -> None:
+    """订单状态机：pending(已下单) → making(制作中) → served(已上菜)。"""
+    _add_column_if_missing(conn, "orders", "status", "VARCHAR(20) NOT NULL DEFAULT 'pending'")
+
+
 # (版本号, 描述, 迁移函数)：版本号只增不改，已应用版本永不变更
 MIGRATIONS: list[tuple[int, str, object]] = [
     (1, "视频笔记与语音转写列", _m001_video_and_transcript),
     (2, "餐厅评分/推荐菜/就餐照片列", _m002_restaurant_rating_dishes_photos),
     (3, "菜单点餐模块列", _m003_menu_ordering),
+    (4, "订单状态机列", _m004_order_status),
 ]
 
 

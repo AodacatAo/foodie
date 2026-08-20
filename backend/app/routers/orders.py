@@ -1,4 +1,4 @@
-"""点单落单：下单快照、订单列表、删除。"""
+"""点单落单：下单快照、订单列表、状态流转、删除。"""
 import threading
 
 import httpx
@@ -9,9 +9,31 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import Order, Recipe
 from ..config import settings
-from ..schemas import OrderCreate, OrderListOut, OrderOut
+from ..schemas import OrderCreate, OrderListOut, OrderOut, OrderStatusBody
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
+
+ORDER_STATUS_FLOW = {
+    "pending": "已下单",
+    "making": "制作中",
+    "served": "已上菜",
+}
+
+
+def _notify_wechat(text: str) -> None:
+    """异步推送到独立 wechat-notify 服务；失败仅记日志，不阻塞业务。"""
+    if not settings.wechat_notify_url:
+        return
+    headers = {"Authorization": f"Bearer {settings.notify_token}"} if settings.notify_token else {}
+
+    def _run():
+        try:
+            with httpx.Client(timeout=15) as client:
+                client.post(settings.wechat_notify_url, json={"text": text}, headers=headers)
+        except Exception as e:
+            print(f"[order-notify] 推送失败: {e}")
+
+    threading.Thread(target=_run, daemon=True).start()
 
 
 @router.post("", response_model=OrderOut, status_code=201)
@@ -52,20 +74,8 @@ def create_order(payload: OrderCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(order)
 
-    # 异步微信通知：经 HTTP 调用独立服务 wechat-notify（解耦；失败仅记日志）
-    def _notify():
-        if not settings.wechat_notify_url:
-            return
-        detail = "、".join(f"{i['title']}×{i['qty']}" for i in items)
-        text = f"📋 新订单：{order.person or '家人'} 点了 {len(items)} 道菜 · 合计 ¥{total}\n{detail}"
-        headers = {"Authorization": f"Bearer {settings.notify_token}"} if settings.notify_token else {}
-        try:
-            with httpx.Client(timeout=15) as client:
-                client.post(settings.wechat_notify_url, json={"text": text}, headers=headers)
-        except Exception as e:
-            print(f"[order-notify] 推送失败: {e}")
-
-    threading.Thread(target=_notify, daemon=True).start()
+    detail = "、".join(f"{i['title']}×{i['qty']}" for i in items)
+    _notify_wechat(f"📋 新订单：{order.person or '家人'} 点了 {len(items)} 道菜 · 合计 ¥{total}\n{detail}")
 
     return order
 
@@ -85,6 +95,31 @@ def list_orders(
         .all()
     )
     return {"total": total, "items": items}
+
+
+@router.get("/{order_id}", response_model=OrderOut)
+def get_order(order_id: int, db: Session = Depends(get_db)):
+    order = db.get(Order, order_id)
+    if not order:
+        raise HTTPException(404, "订单不存在")
+    return order
+
+
+@router.post("/{order_id}/status", response_model=OrderOut)
+def set_order_status(order_id: int, payload: OrderStatusBody, db: Session = Depends(get_db)):
+    """流转订单状态（pending → making → served）；上菜时微信通知。"""
+    if payload.status not in ORDER_STATUS_FLOW:
+        raise HTTPException(400, "非法状态（pending/making/served）")
+    order = db.get(Order, order_id)
+    if not order:
+        raise HTTPException(404, "订单不存在")
+    order.status = payload.status
+    db.commit()
+    db.refresh(order)
+    if payload.status == "served":
+        detail = "、".join(f"{i['title']}×{i['qty']}" for i in (order.items or []))
+        _notify_wechat(f"🔔 上菜啦！{order.person or '家人'} 点的 {len(order.items or [])} 道菜好了\n{detail}")
+    return order
 
 
 @router.delete("/{order_id}", status_code=204)

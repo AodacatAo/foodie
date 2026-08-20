@@ -138,4 +138,5 @@ class Order(Base):
     person: Mapped[str | None] = mapped_column(String(50))  # 下单人（可选）
     items: Mapped[list] = mapped_column(JSON, default=list)  # [{recipe_id, title, price, qty}]
     total: Mapped[float] = mapped_column(default=0.0)
+    status: Mapped[str] = mapped_column(String(20), default="pending", index=True)  # pending/making/served
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

@@ -99,6 +99,16 @@
           </button>
         </div>
         <p v-if="orderDone" class="order-done">✅ 已下单！{{ orderDoneMsg }}</p>
+        <div v-if="orderStatus" class="status-card">
+          <div class="status-steps">
+            <span v-for="(s, i) in STATUS_STEPS" :key="s" class="status-step" :class="{ on: i <= statusIndex }">
+              {{ s }}
+            </span>
+          </div>
+          <p class="status-hint">
+            {{ orderStatus.status === 'served' ? '菜都上齐啦，开吃！🍚' : '后厨正在准备，本页会自动刷新进度～' }}
+          </p>
+        </div>
         <p v-if="error" class="error">{{ error }}</p>
         <button class="cart-close" @click="cartOpen = false">收起 ▾</button>
       </div>
@@ -107,7 +117,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { api, mediaUrl } from '../api'
 
 const CART_KEY = 'foodie_cart_v1'
@@ -200,6 +210,46 @@ const submitting = ref(false)
 const orderDone = ref(false)
 const orderDoneMsg = ref('')
 
+// ---- 订单进度：下单后轮询状态（pending→making→served），刷新页面后恢复轮询 ----
+const STATUS_STEPS = ['已下单', '制作中', '已上菜']
+const STATUS_INDEX = { pending: 0, making: 1, served: 2 }
+const orderStatus = ref(null)
+let statusTimer = null
+
+const statusIndex = computed(() => STATUS_INDEX[orderStatus.value?.status] ?? 0)
+
+async function pollOrderStatus(orderId) {
+  try {
+    const o = await api.getOrder(orderId)
+    orderStatus.value = o
+    // 超过 2 小时或已上菜：停止轮询
+    if (o.status === 'served' || new Date(o.created_at).getTime() < Date.now() - 2 * 3600 * 1000) {
+      stopPolling()
+    }
+  } catch {
+    stopPolling()
+  }
+}
+
+function startPolling(orderId) {
+  stopPolling()
+  pollOrderStatus(orderId)
+  statusTimer = setInterval(() => pollOrderStatus(orderId), 8000)
+}
+
+function stopPolling() {
+  if (statusTimer) { clearInterval(statusTimer); statusTimer = null }
+}
+
+function resumeLastOrder() {
+  try {
+    const lo = JSON.parse(localStorage.getItem('foodie_last_order') || 'null')
+    if (lo && lo.id && Date.now() - (lo.ts || 0) < 2 * 3600 * 1000) {
+      startPolling(lo.id)
+    }
+  } catch { /* 忽略 */ }
+}
+
 async function submitOrder() {
   if (!ordered.value.length) { cartOpen.value = false; return }
   submitting.value = true
@@ -213,6 +263,8 @@ async function submitOrder() {
     const order = await api.createOrder(payload)
     clearAll()
     load() // 刷新菜单（价格/上架状态可能已变化）
+    localStorage.setItem('foodie_last_order', JSON.stringify({ id: order.id, ts: Date.now() }))
+    startPolling(order.id)
     const names = order.items.slice(0, 3).map((i) => i.title).join('、')
     orderDone.value = true
     orderDoneMsg.value = `${order.items.length} 道菜 · ¥${order.total}${names ? '（' + names + (order.items.length > 3 ? '…' : '') + '）' : ''}`
@@ -225,7 +277,8 @@ async function submitOrder() {
   }
 }
 
-onMounted(load)
+onMounted(() => { load(); resumeLastOrder() })
+onBeforeUnmount(stopPolling)
 </script>
 
 <style scoped>
@@ -317,6 +370,19 @@ onMounted(load)
   background: var(--brand-grad); box-shadow: 0 3px 10px rgba(229, 83, 60, 0.3);
 }
 .order-done { color: #2e7d32; background: #e8f5e9; border-radius: 8px; padding: 8px 12px; font-size: 13.5px; margin-top: 8px; }
+
+/* 订单进度 */
+.status-card {
+  margin-top: 10px; background: #fff8f1; border: 1px solid #f5d9c0;
+  border-radius: 10px; padding: 10px 12px;
+}
+.status-steps { display: flex; align-items: center; gap: 6px; }
+.status-step {
+  flex: 1; text-align: center; font-size: 12.5px; font-weight: 600; color: #b8a898;
+  background: #f3ece3; border-radius: 14px; padding: 5px 0;
+}
+.status-step.on { background: var(--brand); color: #fff; }
+.status-hint { margin-top: 7px; font-size: 12px; color: #8a6d52; text-align: center; }
 .cart-total b { color: var(--brand-deep); font-size: 18px; }
 .cart-close { width: 100%; background: #f3ede5; color: #6b5d4e; margin-top: 6px; }
 

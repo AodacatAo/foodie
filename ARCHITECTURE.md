@@ -515,3 +515,13 @@ GET/POST/PUT/DELETE /api/locations        常用位置
 - 本 NAS（Container Station 3.1.2 + QTS 5.2.8）buildkit 构建上下文挂载报 `error creating zfs mount`（手动 zfs create 正常，属 dockerd 侧问题）→ deploy 构建固定 `DOCKER_BUILDKIT=0` 走经典构建器
 
 **验证**：本地冒烟（venv + 临时 DATA_DIR，订单合并/空车/下架/不存在菜品全路径 400/404 正确，重启迁移幂等）→ NAS 全量部署 → 线上 schema_migrations=1,2,3 → 真实下单（小炒黄牛肉×1+炝爆藕丁×2=¥114）微信通知 `sent` → 删除测试单。备份首跑 `integrity: ok`，去重生效（次日目录 14K）。
+
+---
+
+## 功能迭代记录（2026-08 · 第三批）
+
+**A5 菜谱分享卡片**：详情页「📤 分享卡片」→ `POST /api/recipes/{id}/share-card` → `services/share_card.py` 用 PIL 合成竖向长图（750px 宽：品牌头/标题/封面/食材/步骤+配图/页脚日期），存 `media/share/{id}-{时间戳}.png`（新内容=新 URL，旧卡片自动清理）。手机长按保存发微信。依赖中文字体：本机 PingFang → 容器 wqy-microhei（Dockerfile 新增 `fonts-wqy-microhei fonts-noto-color-emoji`，同时修复 NAS 上封面生成中文豆腐块问题）。
+
+**C1 订单状态机**：`orders.status`（迁移 v4：pending→making→served）。管理端点单记录「开始制作/上菜」，`POST /api/orders/{id}/status`；上菜时微信通知。用户端点单后本地轮询（8s，2h 上限），「已下单→制作中→已上菜」进度条；刷新页面后凭 `foodie_last_order`（localStorage）恢复轮询。
+
+**C3 打印版菜单 PDF**：管理端「🖨 打印菜单」→ `GET /api/recipes/menu.pdf?origin=` → `services/menu_pdf.py`（reportlab，A4 双栏按分类分节 + 页脚扫码点餐二维码指向 `{origin}/#/order`）。中文字体：容器 wqy-microhei.ttc（TrueType）→ reportlab 内置 CID `STSong-Light`（本机 PingFang 为 CFF 字体 reportlab 不支持，已踩坑）→ Helvetica 兜底。依赖新增 `reportlab>=4.0`、`qrcode>=7.4`。

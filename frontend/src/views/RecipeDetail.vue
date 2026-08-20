@@ -44,6 +44,7 @@
           class="video-player"
         ></video>
         <div v-if="recipe.status === 'published'" class="head-actions">
+          <button class="secondary" @click="makeShare">📤 分享卡片</button>
           <button class="secondary" @click="editing = true">✏️ 编辑</button>
           <button class="secondary danger" :class="{ confirming: confirmDel === 'recipe' }" @click="askDelete('recipe')">
             {{ confirmDel === 'recipe' ? '再点确认' : '🗑 删除' }}
@@ -83,6 +84,21 @@
         </div>
       </div>
     </template>
+
+    <!-- 分享卡片弹窗 -->
+    <div v-if="shareOpen" class="share-overlay" @click.self="shareOpen = false">
+      <div class="share-card">
+        <h3>📤 分享菜谱卡片</h3>
+        <div v-if="shareLoading" class="empty">生成中…</div>
+        <template v-else-if="sharePath">
+          <img :src="mediaUrl(sharePath)" class="share-img" alt="分享卡片" />
+          <p class="muted share-tip">手机上长按图片保存，微信发给家人；电脑上可右键另存</p>
+          <a class="download-link" :href="mediaUrl(sharePath)" :download="`${recipe.title}-食集菜谱.png`">💾 直接下载</a>
+        </template>
+        <p v-else-if="shareError" class="error">{{ shareError }}</p>
+        <button class="secondary" @click="shareOpen = false">关闭</button>
+      </div>
+    </div>
   </template>
 </template>
 
@@ -98,6 +114,25 @@ const recipe = ref(null)
 const error = ref('')
 const editing = ref(false)
 const checked = ref([])
+const shareOpen = ref(false)
+const shareLoading = ref(false)
+const sharePath = ref('')
+const shareError = ref('')
+
+async function makeShare() {
+  shareOpen.value = true
+  shareLoading.value = true
+  shareError.value = ''
+  sharePath.value = ''
+  try {
+    const data = await api.makeShareCard(recipe.value.id)
+    sharePath.value = data.path
+  } catch (e) {
+    shareError.value = e.message
+  } finally {
+    shareLoading.value = false
+  }
+}
 
 async function load() {
   try {
@@ -185,6 +220,22 @@ onMounted(load)
 .step-title { font-size: 15px; margin-bottom: 4px; }
 .step p { white-space: pre-wrap; font-size: 14px; color: #444; }
 .step-img { margin-top: 8px; max-width: 100%; border-radius: 8px; }
+
+/* 分享卡片弹窗 */
+.share-overlay {
+  position: fixed; inset: 0; z-index: 150;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.share-card {
+  background: #fff; border-radius: 16px; padding: 20px;
+  max-width: 420px; width: 100%; max-height: 86vh; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 10px; align-items: center; text-align: center;
+}
+.share-card h3 { font-size: 17px; color: #2f2a24; }
+.share-img { width: 100%; border-radius: 10px; box-shadow: 0 6px 24px rgba(0,0,0,0.12); }
+.share-tip { font-size: 12.5px; }
+.download-link { color: #e5533c; font-size: 14px; font-weight: 600; }
 
 /* ---- 移动端 ---- */
 @media (max-width: 768px) {

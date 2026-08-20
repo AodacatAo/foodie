@@ -64,14 +64,14 @@ def _generate_text_image(
             ImageDraw.Draw(img).line([(0, y), (W, y)], fill=(r, g, b))
         draw = ImageDraw.Draw(img)
 
-        font_path = next((p for p in _FONT_CANDIDATES if Path(p).exists()), None)
-        font_big = ImageFont.truetype(font_path, 52) if font_path else ImageFont.load_default()
-        font_small = ImageFont.truetype(font_path, 26) if font_path else ImageFont.load_default()
+        font_big = pick_font(52)
+        font_small = pick_font(26)
 
         # emoji
         try:
-            if Path(_EMOJI_FONT).exists():
-                font_emoji = ImageFont.truetype(_EMOJI_FONT, 110)
+            emoji_font_path = pick_emoji_font_path()
+            if emoji_font_path:
+                font_emoji = ImageFont.truetype(emoji_font_path, 110)
                 bbox = draw.textbbox((0, 0), emoji, font=font_emoji)
                 ew, eh = bbox[2] - bbox[0], bbox[3] - bbox[1]
                 draw.text(((W - ew) / 2 - bbox[0], 60 - bbox[1]), emoji, font=font_emoji)
@@ -84,7 +84,7 @@ def _generate_text_image(
 
         lines = _wrap_text(title, 10)
         total_h = len(lines) * 64
-        y = (H - total_h) / 2 + (70 if Path(_EMOJI_FONT).exists() else 0)
+        y = (H - total_h) / 2 + (70 if pick_emoji_font_path() else 0)
         for line in lines:
             bbox = draw.textbbox((0, 0), line, font=font_big)
             w = bbox[2] - bbox[0]
@@ -113,8 +113,27 @@ _FONT_CANDIDATES = [
     "/System/Library/Fonts/PingFang.ttc",
     "/System/Library/Fonts/STHeiti Medium.ttc",
     "/System/Library/Fonts/Supplemental/Songti.ttc",
+    "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",  # 容器（NAS 镜像）中文字体
 ]
-_EMOJI_FONT = "/System/Library/Fonts/Apple Color Emoji.ttc"
+_EMOJI_FONT_CANDIDATES = [
+    "/System/Library/Fonts/Apple Color Emoji.ttc",
+    "/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf",  # 容器（NAS 镜像）emoji 字体
+]
+
+
+def pick_font(size: int):
+    """选择中文字体：本机 PingFang → 容器 wqy-microhei → PIL 默认。"""
+    try:
+        from PIL import ImageFont
+    except ImportError:
+        return None
+    font_path = next((p for p in _FONT_CANDIDATES if Path(p).exists()), None)
+    return ImageFont.truetype(font_path, size) if font_path else ImageFont.load_default()
+
+
+def pick_emoji_font_path() -> str | None:
+    """返回可用的 emoji 字体路径（无则 None）。"""
+    return next((p for p in _EMOJI_FONT_CANDIDATES if Path(p).exists()), None)
 
 
 def download_cover_url(url: str, target: Path) -> bool:
@@ -172,18 +191,15 @@ def generate_restaurant_cover(target: Path, name: str, cuisine: str | None) -> b
             ImageDraw.Draw(img).line([(0, y), (W, y)], fill=(r, g, b))
         draw = ImageDraw.Draw(img)
 
-        font_path = next((p for p in _FONT_CANDIDATES if Path(p).exists()), None)
-        if font_path:
-            font_big = ImageFont.truetype(font_path, 52)
-            font_small = ImageFont.truetype(font_path, 26)
-        else:
-            font_big = font_small = ImageFont.load_default()
+        font_big = pick_font(52)
+        font_small = pick_font(26)
 
-        # emoji（Apple Color Emoji 渲染，失败则跳过）
+        # emoji（Apple Color Emoji / Noto Color Emoji 渲染，失败则跳过）
         emoji = CUISINE_EMOJI.get(cuisine or "", "🍽️")
         try:
-            if Path(_EMOJI_FONT).exists():
-                font_emoji = ImageFont.truetype(_EMOJI_FONT, 110)
+            emoji_font_path = pick_emoji_font_path()
+            if emoji_font_path:
+                font_emoji = ImageFont.truetype(emoji_font_path, 110)
                 bbox = draw.textbbox((0, 0), emoji, font=font_emoji)
                 ew, eh = bbox[2] - bbox[0], bbox[3] - bbox[1]
                 draw.text(((W - ew) / 2 - bbox[0], 60 - bbox[1]), emoji, font=font_emoji)
@@ -198,7 +214,7 @@ def generate_restaurant_cover(target: Path, name: str, cuisine: str | None) -> b
         # 店名（居中，超长换行）
         lines = _wrap_text(name, 10)
         total_h = len(lines) * 64
-        y = (H - total_h) / 2 + (70 if Path(_EMOJI_FONT).exists() else 0)
+        y = (H - total_h) / 2 + (70 if pick_emoji_font_path() else 0)
         for line in lines:
             bbox = draw.textbbox((0, 0), line, font=font_big)
             w = bbox[2] - bbox[0]

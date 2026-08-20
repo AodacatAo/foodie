@@ -38,6 +38,8 @@ export const api = {
   toggleWant: (id) => req(`/recipes/${id}/want`, { method: 'POST' }),
   setMenuPrice: (id, price) => req(`/recipes/${id}/menu-price`, { method: 'POST', body: JSON.stringify({ price }) }),
   setMenuCategory: (id, category) => req(`/recipes/${id}/menu-category`, { method: 'POST', body: JSON.stringify({ category }) }),
+  makeShareCard: (id) => req(`/recipes/${id}/share-card`, { method: 'POST' }),
+  menuPdfUrl: (origin) => `/api/recipes/menu.pdf?origin=${encodeURIComponent(origin || '')}`,
   listTags: () => req('/recipes/tags'),
   submitManual: (data) => req('/imports/manual', { method: 'POST', body: JSON.stringify(data) }),
   submitXhs: (url) => req('/imports', { method: 'POST', body: JSON.stringify({ url }) }),
@@ -78,6 +80,8 @@ export const api = {
   netInfo: () => req('/net'),
   createOrder: (data) => req('/orders', { method: 'POST', body: JSON.stringify(data) }),
   listOrders: (params = {}) => req(`/orders?${new URLSearchParams(params)}`),
+  getOrder: (id) => req(`/orders/${id}`),
+  setOrderStatus: (id, status) => req(`/orders/${id}/status`, { method: 'POST', body: JSON.stringify({ status }) }),
   deleteOrder: (id) => req(`/orders/${id}`, { method: 'DELETE' }),
 }
 

@@ -1,11 +1,15 @@
-"""菜谱 CRUD + 标签。"""
+"""菜谱 CRUD + 标签 + 菜单点餐 + 分享卡片 + 打印菜单 PDF。"""
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..database import get_db
+from ..models import Recipe
 from ..schemas import RecipeCreate, RecipeListOut, RecipeOut, RecipeUpdate
 from ..services import recipe_service
+from ..services.menu_pdf import build_menu_pdf
+from ..services.share_card import generate_share_card
 
 router = APIRouter(prefix="/api/recipes", tags=["recipes"])
 
@@ -28,6 +32,37 @@ def list_recipes(
 @router.get("/tags", response_model=list[str])
 def list_tags(db: Session = Depends(get_db)):
     return recipe_service.list_tags(db)
+
+
+@router.get("/menu.pdf")
+def menu_pdf(origin: str = "", db: Session = Depends(get_db)):
+    """打印版菜单 PDF（上架菜品，A4 双栏 + 扫码点餐二维码）。"""
+    recipes = (
+        db.query(Recipe)
+        .filter(Recipe.on_menu.is_(True))
+        .order_by(Recipe.menu_category, Recipe.id)
+        .all()
+    )
+    if not recipes:
+        raise HTTPException(404, "菜单是空的，先上架几道菜")
+    pdf_bytes = build_menu_pdf(recipes, origin)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="shiji-menu.pdf"'},
+    )
+
+
+@router.post("/{recipe_id}/share-card")
+def make_share_card(recipe_id: int, db: Session = Depends(get_db)):
+    """生成菜谱分享长图，返回 {path}（media/ 下相对路径）。"""
+    recipe = db.get(Recipe, recipe_id)
+    if not recipe:
+        raise HTTPException(404, "菜谱不存在")
+    path = generate_share_card(recipe)
+    if not path:
+        raise HTTPException(500, "分享卡片生成失败（图片组件不可用）")
+    return {"path": path}
 
 
 @router.get("/{recipe_id}", response_model=RecipeOut)

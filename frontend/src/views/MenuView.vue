@@ -9,7 +9,10 @@
           <span v-if="totalPrice !== null" class="total"> · 合计 ¥{{ totalPrice }}</span>
         </p>
       </div>
-      <button class="qr-btn" @click="openQr">📱 扫码点餐</button>
+      <div class="head-actions">
+        <a class="qr-btn pdf-btn" :href="menuPdfUrl" target="_blank" rel="noopener">🖨 打印菜单</a>
+        <button class="qr-btn" @click="openQr">📱 扫码点餐</button>
+      </div>
     </div>
 
     <div v-if="error" class="error">{{ error }}</div>
@@ -92,12 +95,17 @@
       <div v-for="o in orders" :key="o.id" class="order-item">
         <div class="order-line">
           <b>{{ o.person || '家人' }}</b>
+          <span class="status-chip" :class="o.status">{{ statusLabel(o.status) }}</span>
           <span class="muted">{{ fmtTime(o.created_at) }}</span>
           <span class="order-total">¥{{ o.total }}</span>
           <button class="ghost" title="删除记录" @click="removeOrder(o)">✕</button>
         </div>
         <div class="order-items muted">
           <span v-for="(it, i) in o.items" :key="i">{{ it.title }}×{{ it.qty }}<span v-if="i < o.items.length - 1">、</span></span>
+        </div>
+        <div v-if="o.status !== 'served'" class="order-actions">
+          <button v-if="o.status === 'pending'" class="chip-mini advance" @click="advanceOrder(o, 'making')">👨‍🍳 开始制作</button>
+          <button v-else-if="o.status === 'making'" class="chip-mini advance" @click="advanceOrder(o, 'served')">✅ 上菜</button>
         </div>
       </div>
     </div>
@@ -126,10 +134,14 @@ const loading = ref(false)
 const showQr = ref(false)
 const qrDataUrl = ref('')
 const menuUrl = computed(() => `${window.location.origin}/#/order`)
+const menuPdfUrl = computed(() => api.menuPdfUrl(window.location.origin))
 const editingPrice = ref(null)
 const editingCat = ref(null)
 const catDraft = ref('')
 const presetCats = ['热菜', '凉菜', '汤', '主食', '小吃', '饮品', '甜品']
+
+const STATUS_LABEL = { pending: '已下单', making: '制作中', served: '已上菜' }
+function statusLabel(s) { return STATUS_LABEL[s] || s }
 
 function toggleCatEdit(r) {
   editingCat.value = editingCat.value === r.id ? null : r.id
@@ -244,6 +256,15 @@ async function removeOrder(o) {
   }
 }
 
+async function advanceOrder(o, status) {
+  try {
+    const updated = await api.setOrderStatus(o.id, status)
+    o.status = updated.status
+  } catch (e) {
+    error.value = e.message
+  }
+}
+
 async function openQr() {
   showQr.value = true
   if (!qrDataUrl.value) {
@@ -264,6 +285,13 @@ onMounted(() => { load(); loadOrders() })
 .total { color: var(--brand-deep); font-weight: 700; }
 .qr-btn { background: #2e7d32; }
 .qr-btn:hover { opacity: 0.9; }
+.pdf-btn {
+  background: #5d4a36; color: #fff; text-decoration: none;
+  display: inline-flex; align-items: center;
+  padding: 10px 18px; border-radius: 10px; font-size: 14px; font-weight: 600;
+}
+.pdf-btn:hover { opacity: 0.9; }
+.head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .menu-empty { line-height: 2; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
 .menu-card { padding: 0; overflow: hidden; transition: transform 0.12s, box-shadow 0.12s; }
@@ -330,6 +358,14 @@ onMounted(() => { load(); loadOrders() })
 .order-line { display: flex; align-items: center; gap: 10px; font-size: 14px; }
 .order-total { margin-left: auto; color: var(--brand-deep); font-weight: 800; font-size: 15px; }
 .order-items { font-size: 12.5px; margin-top: 2px; }
+.status-chip {
+  font-size: 11px; font-weight: 700; border-radius: 10px; padding: 1px 8px;
+}
+.status-chip.pending { background: #fff3e0; color: #c97900; }
+.status-chip.making { background: #e3f2fd; color: #1565c0; }
+.status-chip.served { background: #e8f5e9; color: #2e7d32; }
+.order-actions { margin-top: 6px; }
+.chip-mini.advance { cursor: pointer; }
 
 /* 扫码弹窗 */
 .qr-overlay {

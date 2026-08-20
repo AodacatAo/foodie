@@ -251,6 +251,10 @@ class OrderCreate(BaseModel):
     items: list[OrderItemIn] = Field(default_factory=list, max_length=50)
 
 
+class OrderStatusBody(BaseModel):
+    status: str  # pending / making / served
+
+
 class OrderOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -258,6 +262,7 @@ class OrderOut(BaseModel):
     person: str | None = None
     items: list[dict] = Field(default_factory=list)
     total: float = 0.0
+    status: str = "pending"
     created_at: datetime
 
 
