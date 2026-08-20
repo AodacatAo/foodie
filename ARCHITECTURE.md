@@ -492,6 +492,7 @@ GET/POST/PUT/DELETE /api/locations        常用位置
 - **彻底分离（2026-08 二次重构）**：`wechat-notify` 已成为**独立仓库/独立 compose**（NAS 目录 `/share/ZFS2_DATA/wechat-notify`，端口 8090，Bearer token 鉴权，凭据数据卷 `wechat-data/`）；食集下单时经 HTTP 调 `WECHAT_NOTIFY_URL=http://wechat-notify:8090/notify`（通过 `docker network connect foodie_default wechat-notify` 运行时打通，deploy 脚本幂等执行），食集容器内**不含任何微信代码**
 - 通用接口：`POST :8090/notify {text}`——供脚本/DSH skill 等主动触达微信；配套 DSH skill「wechat-notify」
 - 早期方案（Mac launchd 轮询 `scripts/order-notify.mjs`）已停用，脚本保留备用
+- **prepare failed 根治（2026-08-20）**：iLink `sendmessage` 的「已 prepare」状态绑定**登录会话世系**（get_updates_buf）——空 buf 轮询建立的是无法发送的旁观会话，`notifystart` 保活救不回（症状：聊天桥下线约 5-6 小时后推送持续 prepare failed，已实测复现）。wechat-notify 服务新增**持续 getupdates 长轮询监控循环**（会话游标持久化在数据卷 `get_updates_buf.json`，重启沿用），不再依赖电脑端聊天桥在线。注意：若电脑端 DSH 聊天桥与 NAS 共用同一 bot 账号，会话世系仍会互相抢占（历史上可共存但偶发失败）；彻底隔离需为 NAS 服务单独登录一个 bot 账号（备选方案，未实施）
 
 **扫码点餐**：管理端「📱 扫码点餐」按钮用 qrcode 库生成二维码，指向 `{origin}/#/order`（自动适配局域网 IP），手机同 Wi-Fi 微信扫码直达用户端。
 
