@@ -18,6 +18,7 @@ NAS_PASS='<NAS密码>' python3 scripts/deploy_qnap.py all
 
 - 局域网访问：`http://<NAS-IP>:8080`（免登录）
 - 数据（数据库/图片/登录态/微信凭据）全部在 NAS 数据卷，**部署只更新代码、绝不覆盖线上数据**
+- 配置安全：`.env`（含 API Key/令牌）只存在于 NAS 宿主机目录，运行时经 compose `env_file` 注入容器，**不打入镜像层**（.dockerignore 兜底排除）
 - 容器 `restart: always` + 健康检查自动拉起
 - 微信通知是**独立服务**（独立仓库 [wechat-notify](https://github.com/AodacatAo/wechat-notify)、独立 compose），按需单独部署，食集不含任何微信代码
 

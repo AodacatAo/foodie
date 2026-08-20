@@ -451,6 +451,7 @@ GET/POST/PUT/DELETE /api/locations        常用位置
 **结构**（`/share/ZFS2_DATA/foodie`）：
 - `Dockerfile` + `docker-compose.yml`：`foodie`（应用，端口 8080，卷挂 `./data:/app/backend/data`；公网隧道已移除，仅局域网访问）
 - 数据（DB/媒体/whisper 模型/浏览器登录态）全部在 `./data`，重建容器不丢
+- **配置不进镜像（2026-08 安全加固）**：`.env` 只在 NAS 宿主机目录，compose `env_file` 运行时注入环境变量；Dockerfile 不再 `COPY .env`，`.dockerignore` 排除 `.env`——密钥不会固化在镜像层
 - 镜像内 `playwright install chrome`（npmmirror 加速）满足 `channel="chrome"`；容器内 root 运行 → 爬虫启动参数 `chromium_sandbox=(os.geteuid() != 0)`
 
 **部署**：`NAS_PASS='<nas密码>' python3 scripts/deploy_qnap.py all`（pack→upload→extract→build→up）。

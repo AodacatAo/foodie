@@ -31,9 +31,9 @@ RUN pip install playwright -i https://pypi.tuna.tsinghua.edu.cn/simple \
     && rm -rf /root/.cache/ms-playwright/.links
 
 # 应用代码（data 目录由 docker-compose 卷挂载，不入镜像）
+# 注意：.env 不进镜像（避免密钥固化在镜像层），配置由 compose env_file 在运行时注入
 COPY backend/app backend/app
 COPY frontend/dist frontend/dist
-COPY .env .env
 
 WORKDIR /app/backend
 EXPOSE 8080

@@ -9,6 +9,7 @@ services:
       - "8080:8080"
     volumes:
       - ./data:/app/backend/data
+    # 配置在运行时注入：.env 存在于 NAS 宿主机本目录（不进镜像层，避免密钥固化）
     env_file:
       - .env
     # 容器内访问宿主机上其他服务（如独立部署的 wechat-notify）
