@@ -111,7 +111,8 @@ def pack():
     print("== pack: 打包代码 ==")
     with tarfile.open(f"{STAGE}/code.tgz", "w:gz") as t:
         for rel in ["backend/app", "backend/requirements.txt", "frontend/dist",
-                    ".env", "Dockerfile", ".dockerignore", "docker-compose.yml"]:
+                    ".env", "Dockerfile", ".dockerignore", "docker-compose.yml",
+                    "scripts/nas_backup.sh"]:
             t.add(f"{LOCAL_ROOT}/{rel}", arcname=rel)
 
     for f in ("code.tgz", "data.tgz"):
@@ -206,6 +207,8 @@ def up(conn):
     print(out.strip()[:800])
     # 打通独立部署的微信通知服务网络（幂等；服务在独立仓库/独立 compose）
     ssh(conn, f"{DOCKER} network connect foodie_default wechat-notify 2>/dev/null; true", timeout=60)
+    # 每日异池备份 cron（幂等安装；备份目标为异池 /share/ZFS19_DATA/foodie-backups）
+    _ensure_backup_cron(conn)
     if err.strip():
         print("[stderr]", err.strip()[:400])
     time.sleep(8)
@@ -213,6 +216,19 @@ def up(conn):
     print(out.strip())
     out, _ = ssh(conn, f"curl -s --max-time 8 http://127.0.0.1:8080/api/health")
     print("NAS 本机 health:", out.strip()[:200])
+
+
+def _ensure_backup_cron(conn):
+    """把 nas_backup.sh 挂进 crontab（每日 04:15，异池备份）。已存在则跳过。"""
+    cron_line = "15 4 * * * /share/ZFS2_DATA/foodie/scripts/nas_backup.sh"
+    cmd = (
+        f"chmod +x {NAS_DIR}/scripts/nas_backup.sh; "
+        f"if ! grep -qF '{cron_line}' /etc/config/crontab 2>/dev/null; then "
+        f"echo '{cron_line}' >> /etc/config/crontab && /etc/init.d/crond.sh restart; fi"
+    )
+    out, err = ssh(conn, cmd, timeout=60)
+    if err.strip():
+        print("[cron stderr]", err.strip()[:200])
 
 
 def main():

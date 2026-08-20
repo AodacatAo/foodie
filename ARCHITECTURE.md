@@ -460,6 +460,7 @@ GET/POST/PUT/DELETE /api/locations        常用位置
 - QNAP 未启用 SFTP 子系统 → 上传走 SSH exec 通道流式 tar
 - docker CLI 全路径 `/share/ZFS1_DATA/.qpkg/container-station/bin/docker`
 - 数据库迁移用 sqlite `backup()` API 做一致性快照（服务器运行中也安全）
+- **NAS 数据备份（2026-08 复盘后补上）**：此前 NAS 侧无任何备份机制（无 HBS3/HybridBackup、无快照计划）。现由 `scripts/nas_backup.sh` + crontab（每日 04:15，deploy 幂等安装）备份到异池 `/share/ZFS19_DATA/foodie-backups`（zpool3 ≠ zpool1，池级故障隔离）：DB 走容器内 sqlite backup API（运行中安全），media/snapshots/models 硬链接日视图（省空间），wechat-notify 凭据一并覆盖，保留 14 天 + `latest/` 软链
 - **数据库结构演进（2026-08）**：版本化迁移 `backend/app/migrations.py` —— `schema_migrations` 表记录已应用版本，启动时事务内按序执行未应用项；约定「只增不改」、回填用 NULL/默认值守卫、每个迁移只执行一次（全新建库重放无害）。新增列/回填一律走迁移，废除 init_db 手工补丁式 `_add_column_if_missing`
 - 登录态与数据迁移后，Mac 端服务应停止，避免两份数据分叉
 

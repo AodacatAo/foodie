@@ -72,7 +72,8 @@ NAS_PASS='<NAS密码>' python3 scripts/deploy_qnap.py all
 
 - SQLite（WAL）：`backend/data/foodie.db`；媒体 `backend/data/media/`
 - 结构演进：版本化迁移（`backend/app/migrations.py` + `schema_migrations` 表），启动时自动按序执行未应用迁移
-- 备份：`./scripts/backup.sh`（建议定期执行）；`backups/` 存历史快照
+- **NAS 每日备份**：`scripts/nas_backup.sh`（部署时自动挂入 crontab，每日 04:15）——数据库用容器内 sqlite backup API 一致性快照，media/快照/模型硬链接增量，连同 wechat-notify 凭据备份到**异池** `/share/ZFS19_DATA/foodie-backups`（保留 14 天，`latest/` 指向最新）
+- Mac 本地备份：`./scripts/backup.sh`（可选）；`backups/` 存历史快照
 
 ## 目录结构
 
