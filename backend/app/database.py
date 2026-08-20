@@ -5,6 +5,7 @@ from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from .config import settings
+from .migrations import run_migrations
 
 
 class Base(DeclarativeBase):
@@ -96,29 +97,10 @@ def init_db() -> None:
     with engine.begin() as conn:
         for stmt in _FTS_STATEMENTS:
             conn.exec_driver_sql(stmt)
-        # 轻量迁移：为已有库补充新增列
-        _add_column_if_missing(conn, "recipes", "video_path", "VARCHAR(500)")
-        _add_column_if_missing(conn, "import_tasks", "transcript_path", "VARCHAR(500)")
-        _add_column_if_missing(conn, "restaurants", "my_rating", "FLOAT")
-        _add_column_if_missing(conn, "restaurants", "recommended_dishes", "JSON")
-        _add_column_if_missing(conn, "visit_logs", "photos", "JSON")
-        _add_column_if_missing(conn, "recipes", "on_menu", "BOOLEAN NOT NULL DEFAULT 0")
-        _add_column_if_missing(conn, "recipes", "menu_want", "BOOLEAN NOT NULL DEFAULT 0")
-        _add_column_if_missing(conn, "recipes", "menu_at", "DATETIME")
-        _add_column_if_missing(conn, "recipes", "menu_price", "FLOAT")
-        _add_column_if_missing(conn, "recipes", "menu_qty", "INTEGER NOT NULL DEFAULT 0")
-        _add_column_if_missing(conn, "recipes", "menu_category", "VARCHAR(50)")
-        # 旧数据回填：NULL → 空列表
-        conn.exec_driver_sql(
-            "UPDATE restaurants SET recommended_dishes = '[]' WHERE recommended_dishes IS NULL"
-        )
-        conn.exec_driver_sql("UPDATE visit_logs SET photos = '[]' WHERE photos IS NULL")
+        # 版本化迁移（schema_migrations 表记录进度，见 migrations.py）
+        run_migrations(conn)
+        # TODO(菜单重构): 此行即将移除——menu_qty 废弃后不再与 menu_want 联动
         conn.exec_driver_sql("UPDATE recipes SET menu_qty = 1 WHERE menu_want = 1")
-
-def _add_column_if_missing(conn, table: str, column: str, ddl: str) -> None:
-    cols = [row[1] for row in conn.exec_driver_sql(f"PRAGMA table_info({table})").fetchall()]
-    if column not in cols:
-        conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
 
 
 def get_db():

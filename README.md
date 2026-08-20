@@ -70,6 +70,7 @@ NAS_PASS='<NAS密码>' python3 scripts/deploy_qnap.py all
 ## 数据
 
 - SQLite（WAL）：`backend/data/foodie.db`；媒体 `backend/data/media/`
+- 结构演进：版本化迁移（`backend/app/migrations.py` + `schema_migrations` 表），启动时自动按序执行未应用迁移
 - 备份：`./scripts/backup.sh`（建议定期执行）；`backups/` 存历史快照
 
 ## 目录结构

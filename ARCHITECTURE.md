@@ -458,6 +458,7 @@ GET/POST/PUT/DELETE /api/locations        常用位置
 - QNAP 未启用 SFTP 子系统 → 上传走 SSH exec 通道流式 tar
 - docker CLI 全路径 `/share/ZFS1_DATA/.qpkg/container-station/bin/docker`
 - 数据库迁移用 sqlite `backup()` API 做一致性快照（服务器运行中也安全）
+- **数据库结构演进（2026-08）**：版本化迁移 `backend/app/migrations.py` —— `schema_migrations` 表记录已应用版本，启动时事务内按序执行未应用项；约定「只增不改」、回填用 NULL/默认值守卫、每个迁移只执行一次（全新建库重放无害）。新增列/回填一律走迁移，废除 init_db 手工补丁式 `_add_column_if_missing`
 - 登录态与数据迁移后，Mac 端服务应停止，避免两份数据分叉
 
 **访问**：局域网 `http://<NAS-IP>:8080`（免密）。公网访问已移除（2026-08）；如未来需要可重新引入内网穿透方案，鉴权中间件已保留（`Cf-Connecting-Ip` 判断 + `ACCESS_TOKEN`）。
