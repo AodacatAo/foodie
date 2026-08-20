@@ -37,10 +37,15 @@ else
     rsync -a "$SRC/foodie.db" "$SRC/foodie.db-wal" "$SRC/foodie.db-shm" "$DAY/" 2>>"$LOG" || true
 fi
 
-# 2) 大文件增量：硬链接优先（快），失败降级 rsync
+# 2) 大文件增量：rsync + --link-dest（与上一份备份硬链接去重，仅复制变更文件；
+#    注意跨池不能对源文件硬链接，去重只发生在目标池 zpool3 内部）
 for sub in media snapshots models; do
     if [ -d "$SRC/$sub" ]; then
-        cp -al "$SRC/$sub" "$DAY/" 2>>"$LOG" || rsync -a "$SRC/$sub/" "$DAY/$sub/" 2>>"$LOG" || true
+        if [ -e "$DEST/latest/$sub" ]; then
+            rsync -a --link-dest="$DEST/latest/$sub" "$SRC/$sub/" "$DAY/$sub/" 2>>"$LOG" || true
+        else
+            rsync -a "$SRC/$sub/" "$DAY/$sub/" 2>>"$LOG" || true
+        fi
     fi
 done
 
