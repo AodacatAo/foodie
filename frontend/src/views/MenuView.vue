@@ -23,16 +23,16 @@
       <div
         v-for="r in sorted" :key="r.id"
         class="card menu-card"
-        :class="{ wanted: r.menu_qty > 0 }"
+        :class="{ wanted: r.menu_want }"
       >
         <div class="cover">
           <img v-if="r.cover_image" :src="mediaUrl(r.cover_image)" alt="" loading="lazy" decoding="async" @click="$router.push(`/recipe/${r.id}`)" />
           <span v-else class="cover-fallback" @click="$router.push(`/recipe/${r.id}`)">🍳</span>
           <button
             class="want-btn"
-            :class="{ on: r.menu_qty > 0 }"
+            :class="{ on: r.menu_want }"
             @click.stop.prevent="toggleWant(r)"
-          >{{ r.menu_qty > 0 ? `❤️ 想吃 ×${r.menu_qty}` : '🤍 想吃' }}</button>
+          >{{ r.menu_want ? '❤️ 想吃' : '🤍 想吃' }}</button>
           <button
             class="off-btn"
             title="从菜单下架"
@@ -151,18 +151,18 @@ const priceDraft = ref(null)
 const priceInput = ref(null)
 
 const menuItems = computed(() => items.value.filter((r) => r.on_menu))
-const wantCount = computed(() => menuItems.value.filter((r) => r.menu_qty > 0).length)
+const wantCount = computed(() => menuItems.value.filter((r) => r.menu_want).length)
 // 合计：勾选「想吃」的菜价求和
 const totalPrice = computed(() => {
-  const wanted = menuItems.value.filter((r) => r.menu_qty > 0)
+  const wanted = menuItems.value.filter((r) => r.menu_want)
   if (!wanted.length) return null
-  const sum = wanted.reduce((s, r) => s + (r.menu_price ?? 0) * r.menu_qty, 0)
+  const sum = wanted.reduce((s, r) => s + (r.menu_price ?? 0), 0)
   return sum
 })
 // 想吃置顶 → 最近上架在前
 const sorted = computed(() =>
   [...menuItems.value].sort((a, b) => {
-    if ((a.menu_qty > 0) !== (b.menu_qty > 0)) return a.menu_qty > 0 ? -1 : 1
+    if (a.menu_want !== b.menu_want) return a.menu_want ? -1 : 1
     return new Date(b.menu_at || 0) - new Date(a.menu_at || 0)
   })
 )
@@ -182,9 +182,8 @@ async function load() {
 
 async function toggleWant(r) {
   try {
-    const qty = r.menu_qty > 0 ? 0 : 1
-    const updated = await api.setOrderQty(r.id, qty)
-    r.menu_qty = updated.menu_qty
+    const updated = await api.toggleWant(r.id)
+    r.menu_want = updated.menu_want
   } catch (e) {
     error.value = e.message
   }
@@ -194,7 +193,7 @@ async function takeOff(r) {
   try {
     await api.takeOffMenu(r.id)
     r.on_menu = false
-    r.menu_qty = 0
+    r.menu_want = false
   } catch (e) {
     error.value = e.message
   }

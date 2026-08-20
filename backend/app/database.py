@@ -99,8 +99,6 @@ def init_db() -> None:
             conn.exec_driver_sql(stmt)
         # 版本化迁移（schema_migrations 表记录进度，见 migrations.py）
         run_migrations(conn)
-        # TODO(菜单重构): 此行即将移除——menu_qty 废弃后不再与 menu_want 联动
-        conn.exec_driver_sql("UPDATE recipes SET menu_qty = 1 WHERE menu_want = 1")
 
 
 def get_db():

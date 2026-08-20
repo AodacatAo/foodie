@@ -221,20 +221,6 @@ def set_menu_price(db: Session, recipe_id: int, price: float | None) -> Recipe |
     return recipe
 
 
-
-def set_order_qty(db: Session, recipe_id: int, qty: int) -> Recipe | None:
-    """设置点单份数。"""
-    recipe = db.get(Recipe, recipe_id)
-    if not recipe:
-        return None
-    recipe.menu_qty = qty
-    recipe.menu_want = qty > 0  # 兼容旧字段语义
-    db.commit()
-    db.refresh(recipe)
-    return recipe
-
-
-
 def set_menu_category(db: Session, recipe_id: int, category: str | None) -> Recipe | None:
     """设置菜单分类。"""
     recipe = db.get(Recipe, recipe_id)

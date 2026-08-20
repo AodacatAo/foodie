@@ -33,7 +33,7 @@ class Recipe(Base):
     menu_want: Mapped[bool] = mapped_column(Boolean, default=False)  # 今天想吃（勾选置顶）
     menu_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # 上架时间
     menu_price: Mapped[float | None] = mapped_column()  # 菜单价格（元）
-    menu_qty: Mapped[int] = mapped_column(default=0)  # 点单份数（0=未点）
+    menu_qty: Mapped[int] = mapped_column(default=0)  # 已废弃（购物车改为前端本地存储），列保留兼容旧数据
     menu_category: Mapped[str | None] = mapped_column(String(50))  # 菜单分类（热菜/凉菜/汤…）
     # FTS 冗余文本列（触发器自动同步）
     ingredients_text: Mapped[str] = mapped_column(Text, default="")

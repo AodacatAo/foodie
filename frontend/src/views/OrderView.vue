@@ -27,7 +27,7 @@
       <div
         v-for="r in filtered" :key="r.id"
         class="dish-row"
-        :class="{ ordered: r.menu_qty > 0 }"
+        :class="{ ordered: cartQty(r.id) > 0 }"
       >
         <img v-if="r.cover_image" :src="mediaUrl(r.cover_image)" class="dish-img" alt="" loading="lazy" decoding="async" />
         <span v-else class="dish-img fallback">🍳</span>
@@ -41,8 +41,8 @@
             <span class="price" :class="{ unset: r.menu_price == null }">{{ r.menu_price != null ? `¥${r.menu_price}` : '时价' }}</span>
             <!-- 美团式数量控件 -->
             <div class="qty-ctrl">
-              <button v-if="r.menu_qty > 0" class="qty-btn minus" @click="changeQty(r, -1)">－</button>
-              <span v-if="r.menu_qty > 0" class="qty-num">{{ r.menu_qty }}</span>
+              <button v-if="cartQty(r.id) > 0" class="qty-btn minus" @click="changeQty(r, -1)">－</button>
+              <span v-if="cartQty(r.id) > 0" class="qty-num">{{ cartQty(r.id) }}</span>
               <button class="qty-btn plus" @click="changeQty(r, 1)">＋</button>
             </div>
           </div>
@@ -80,12 +80,12 @@
           </div>
           <div class="qty-ctrl">
             <button class="qty-btn minus" @click.stop="changeQty(r, -1)">－</button>
-            <span class="qty-num">{{ r.menu_qty }}</span>
+            <span class="qty-num">{{ r.qty }}</span>
             <button class="qty-btn plus" @click.stop="changeQty(r, 1)">＋</button>
           </div>
         </div>
         <div v-if="totalPrice" class="cart-total">
-          合计 <b>¥{{ totalPrice }}</b>
+          合计 <b>¥{{ totalPrice }}</b><span v-if="hasUnpriced" class="muted">（含时价菜）</span>
         </div>
         <div class="cart-submit">
           <input
@@ -110,19 +110,42 @@
 import { ref, computed, onMounted } from 'vue'
 import { api, mediaUrl } from '../api'
 
+const CART_KEY = 'foodie_cart_v1'
 const items = ref([])
 const error = ref('')
 const loading = ref(false)
 const cartOpen = ref(false)
 
+// 购物车：存本机 localStorage（每台手机各自独立，互不干扰）
+function loadCart() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(CART_KEY) || '{}')
+    const out = {}
+    for (const [k, v] of Object.entries(raw)) {
+      const qty = Number(v)
+      if (Number.isInteger(qty) && qty > 0 && qty <= 99) out[k] = qty
+    }
+    return out
+  } catch { return {} }
+}
+const cart = ref(loadCart())
+function saveCart() { localStorage.setItem(CART_KEY, JSON.stringify(cart.value)) }
+function cartQty(id) { return cart.value[id] || 0 }
+
 const menuItems = computed(() => items.value.filter((r) => r.on_menu))
-const ordered = computed(() => menuItems.value.filter((r) => r.menu_qty > 0))
+const ordered = computed(() =>
+  menuItems.value
+    .map((r) => ({ ...r, qty: cartQty(r.id) }))
+    .filter((r) => r.qty > 0)
+)
 const orderedCount = computed(() => ordered.value.length)
-const totalQty = computed(() => ordered.value.reduce((s, r) => s + r.menu_qty, 0))
+const totalQty = computed(() => ordered.value.reduce((s, r) => s + r.qty, 0))
 const totalPrice = computed(() => {
-  const sum = ordered.value.reduce((s, r) => s + (r.menu_price ?? 0) * r.menu_qty, 0)
+  const sum = ordered.value.reduce((s, r) => s + (r.menu_price ?? 0) * r.qty, 0)
   return sum || null
 })
+const hasUnpriced = computed(() => ordered.value.some((r) => r.menu_price == null))
+
 // 已点的置顶，其余按上架时间
 const activeCat = ref('全部')
 // 分类（按菜单出现顺序）
@@ -138,16 +161,12 @@ const filtered = computed(() => {
     ? [...menuItems.value]
     : menuItems.value.filter((r) => r.menu_category === activeCat.value)
   return list.sort((a, b) => {
-    if ((a.menu_qty > 0) !== (b.menu_qty > 0)) return a.menu_qty > 0 ? -1 : 1
+    const qa = cartQty(a.id) > 0
+    const qb = cartQty(b.id) > 0
+    if (qa !== qb) return qa ? -1 : 1
     return new Date(b.menu_at || 0) - new Date(a.menu_at || 0)
   })
 })
-const sorted = computed(() =>
-  [...menuItems.value].sort((a, b) => {
-    if ((a.menu_qty > 0) !== (b.menu_qty > 0)) return a.menu_qty > 0 ? -1 : 1
-    return new Date(b.menu_at || 0) - new Date(a.menu_at || 0)
-  })
-)
 
 async function load() {
   loading.value = true
@@ -162,21 +181,18 @@ async function load() {
   }
 }
 
-async function changeQty(r, delta) {
-  const qty = Math.min(99, Math.max(0, r.menu_qty + delta))
-  if (qty === r.menu_qty) return
-  try {
-    const updated = await api.setOrderQty(r.id, qty)
-    r.menu_qty = updated.menu_qty
-  } catch (e) {
-    error.value = e.message
-  }
+function changeQty(r, delta) {
+  const qty = Math.min(99, Math.max(0, cartQty(r.id) + delta))
+  const next = { ...cart.value }
+  if (qty > 0) next[r.id] = qty
+  else delete next[r.id]
+  cart.value = next
+  saveCart()
 }
 
-async function clearAll() {
-  for (const r of ordered.value) {
-    try { await api.setOrderQty(r.id, 0); r.menu_qty = 0 } catch { /* 继续 */ }
-  }
+function clearAll() {
+  cart.value = {}
+  saveCart()
 }
 
 const personName = ref(localStorage.getItem('foodie_order_person') || '')
@@ -190,15 +206,20 @@ async function submitOrder() {
   error.value = ''
   try {
     localStorage.setItem('foodie_order_person', personName.value.trim())
-    const order = await api.createOrder({ person: personName.value.trim() || null })
-    // 清空本地购物车
-    for (const r of ordered.value) { r.menu_qty = 0 }
+    const payload = {
+      person: personName.value.trim() || null,
+      items: ordered.value.map((r) => ({ recipe_id: r.id, qty: r.qty })),
+    }
+    const order = await api.createOrder(payload)
+    clearAll()
+    load() // 刷新菜单（价格/上架状态可能已变化）
     const names = order.items.slice(0, 3).map((i) => i.title).join('、')
     orderDone.value = true
     orderDoneMsg.value = `${order.items.length} 道菜 · ¥${order.total}${names ? '（' + names + (order.items.length > 3 ? '…' : '') + '）' : ''}`
     setTimeout(() => { orderDone.value = false }, 6000)
   } catch (e) {
     error.value = e.message
+    load() // 菜单可能已变化（菜品下架等），同步最新状态
   } finally {
     submitting.value = false
   }

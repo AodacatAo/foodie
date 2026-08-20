@@ -474,10 +474,13 @@ GET/POST/PUT/DELETE /api/locations        常用位置
 | 用户端 | `/#/order` | 美团式点餐：分类栏过滤、+/- 份数、底部购物车（清单/合计/清空）、填名字下单；**无导航/无定价/无做法预览**（路由 `meta.hideNav` 隐藏全部导航） |
 
 **数据模型**（recipes 表扩展 + orders 表）：
-- `on_menu`（上架）、`menu_at`（上架时间）、`menu_price`（元）、`menu_qty`（点单份数 0-99）、`menu_category`（分类）
-- `orders`：下单快照（person/items JSON/total/created_at）；下单即清空 menu_qty
+- `on_menu`（上架）、`menu_at`（上架时间）、`menu_price`（元）、`menu_category`（分类）、`menu_want`（管理端「今天想吃」勾选）
+- `orders`：下单快照（person/items JSON/total/created_at）
+- `menu_qty` 列已废弃保留（旧版把购物车份数存服务端，已废弃——见下）
 
-**API**：`POST /recipes/{id}/menu`（上架）、`DELETE .../menu`（下架）、`POST .../menu-price`、`POST .../menu-category`、`POST .../order`（份数）、`POST /orders`（下单快照+清购物车）、`GET/DELETE /orders`
+**购物车位置（2026-08 架构修正）**：购物车从服务端 `recipes.menu_qty` 迁移到**每台设备前端 localStorage**（`foodie_cart_v1`，每台手机独立互不干扰）；下单时前端提交明细 `POST /orders {person, items:[{recipe_id, qty}]}`，**服务端按当前菜单校验（存在性/上架状态）并以服务端价格快照**，客户端价格一律不采信。原「点单状态与管理端实时互通、下单清空服务端购物车」的语义随之移除；`menu_want` 回归纯管理端意愿标记，与购物车彻底解耦。
+
+**API**：`POST /recipes/{id}/menu`（上架）、`DELETE .../menu`（下架）、`POST .../menu-price`、`POST .../menu-category`、`POST .../want`（想吃切换）、`POST /orders`（提交本机购物车明细→校验+快照）、`GET/DELETE /orders`
 
 **微信下单通知**（NAS 直推，秒级）：
 - 后端 `wechat_notify.py` 用 Python 实现 iLink 官方 sendmessage 协议（协议常量对齐腾讯 openclaw-weixin SDK 2.4.6：`iLink-App-Id: bot`、`AuthorizationType: ilink_bot_token`、`X-WECHAT-UIN` 随机、body 含 `base_info`）

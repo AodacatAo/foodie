@@ -67,7 +67,6 @@ class RecipeOut(BaseModel):
     menu_want: bool = False
     menu_at: datetime | None = None
     menu_price: float | None = None
-    menu_qty: int = 0
     menu_category: str | None = None
     created_at: datetime
     updated_at: datetime
@@ -241,8 +240,15 @@ class UserLocationOut(BaseModel):
     created_at: datetime
 
 
+class OrderItemIn(BaseModel):
+    recipe_id: int
+    qty: int = Field(default=1, ge=1, le=99)
+
+
 class OrderCreate(BaseModel):
     person: str | None = None
+    # 本机购物车明细（前端 localStorage，服务端按当前菜单校验；价格以服务端为准）
+    items: list[OrderItemIn] = Field(default_factory=list, max_length=50)
 
 
 class OrderOut(BaseModel):

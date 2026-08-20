@@ -98,10 +98,6 @@ class MenuPriceBody(BaseModel):
     price: float | None = None
 
 
-class OrderQtyBody(BaseModel):
-    qty: int = 0
-
-
 @router.post("/{recipe_id}/menu-price", response_model=RecipeOut)
 def set_menu_price(recipe_id: int, body: MenuPriceBody, db: Session = Depends(get_db)):
     """设置菜单价格（元）。price 为 null 清除价格。"""
@@ -114,20 +110,6 @@ def set_menu_price(recipe_id: int, body: MenuPriceBody, db: Session = Depends(ge
     if not recipe:
         raise HTTPException(404, "菜谱不存在")
     return recipe
-
-
-
-@router.post("/{recipe_id}/order", response_model=RecipeOut)
-def set_order_qty(recipe_id: int, body: OrderQtyBody, db: Session = Depends(get_db)):
-    """设置点单份数（0-99，0 为取消点单）。"""
-    qty = body.qty
-    if qty < 0 or qty > 99:
-        raise HTTPException(400, "份数需在 0-99 之间")
-    recipe = recipe_service.set_order_qty(db, recipe_id, qty)
-    if not recipe:
-        raise HTTPException(404, "菜谱不存在")
-    return recipe
-
 
 
 class MenuCategoryBody(BaseModel):

@@ -16,33 +16,39 @@ router = APIRouter(prefix="/api/orders", tags=["orders"])
 
 @router.post("", response_model=OrderOut, status_code=201)
 def create_order(payload: OrderCreate, db: Session = Depends(get_db)):
-    """下单：把当前菜单上「已点（份数>0）」的菜快照成订单，并清空点单状态。"""
-    wanted = (
-        db.query(Recipe)
-        .filter(Recipe.on_menu.is_(True), Recipe.menu_qty > 0)
-        .order_by(Recipe.id)
-        .all()
-    )
-    if not wanted:
+    """下单：前端提交本机购物车明细，服务端按当前菜单校验、以服务端价格快照落单。
+
+    购物车存在各设备本地（localStorage），因此不再清空服务端点单状态；
+    重复提交同一道菜会合并份数，下架/不存在的菜会被拒绝。
+    """
+    qty_by_id: dict[int, int] = {}
+    for it in payload.items:
+        qty_by_id[it.recipe_id] = min(99, qty_by_id.get(it.recipe_id, 0) + it.qty)
+    if not qty_by_id:
         raise HTTPException(400, "购物车是空的，先点几道菜吧")
+
+    recipes = db.query(Recipe).filter(Recipe.id.in_(qty_by_id.keys())).all()
+    by_id = {r.id: r for r in recipes}
+    missing = [rid for rid in qty_by_id if rid not in by_id]
+    if missing:
+        raise HTTPException(400, "有菜品不存在或已被删除，请刷新菜单")
+    off_menu = [r.title for r in recipes if not r.on_menu]
+    if off_menu:
+        raise HTTPException(400, f"已不在菜单上：{'、'.join(off_menu)}")
 
     items = [
         {
-            "recipe_id": r.id,
-            "title": r.title,
-            "price": r.menu_price,
-            "qty": r.menu_qty,
+            "recipe_id": rid,
+            "title": by_id[rid].title,
+            "price": by_id[rid].menu_price,
+            "qty": qty_by_id[rid],
         }
-        for r in wanted
+        for rid in sorted(qty_by_id)
     ]
     total = round(sum((i["price"] or 0) * i["qty"] for i in items), 1)
 
     order = Order(person=(payload.person or "").strip()[:50] or None, items=items, total=total)
     db.add(order)
-    # 清空点单状态（购物车）
-    for r in wanted:
-        r.menu_qty = 0
-        r.menu_want = False
     db.commit()
     db.refresh(order)
 

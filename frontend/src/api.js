@@ -37,7 +37,6 @@ export const api = {
   takeOffMenu: (id) => req(`/recipes/${id}/menu`, { method: 'DELETE' }),
   toggleWant: (id) => req(`/recipes/${id}/want`, { method: 'POST' }),
   setMenuPrice: (id, price) => req(`/recipes/${id}/menu-price`, { method: 'POST', body: JSON.stringify({ price }) }),
-  setOrderQty: (id, qty) => req(`/recipes/${id}/order`, { method: 'POST', body: JSON.stringify({ qty }) }),
   setMenuCategory: (id, category) => req(`/recipes/${id}/menu-category`, { method: 'POST', body: JSON.stringify({ category }) }),
   listTags: () => req('/recipes/tags'),
   submitManual: (data) => req('/imports/manual', { method: 'POST', body: JSON.stringify(data) }),
