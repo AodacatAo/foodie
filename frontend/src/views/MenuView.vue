@@ -1,111 +1,126 @@
 <template>
-  <div>
-    <div class="head">
-      <div>
-        <h1 class="page-title">菜单 · 点餐</h1>
-        <p class="muted">
-          {{ menuItems.length }} 道菜在菜单上
-          <span v-if="wantCount"> · 今天想吃 {{ wantCount }} 道</span>
-          <span v-if="totalPrice !== null" class="total"> · 合计 ¥{{ totalPrice }}</span>
-        </p>
-      </div>
-      <div class="head-actions">
-        <a class="action-btn" :href="menuPdfUrl" target="_blank" rel="noopener"><Icon name="printer" :size="15" /> 打印菜单</a>
-        <button class="qr-btn" @click="openQr"><Icon name="qr" :size="15" /> 扫码点餐</button>
-      </div>
-    </div>
-
-    <div v-if="error" class="error">{{ error }}</div>
-    <div v-else-if="loading && !menuItems.length" class="empty">加载中…</div>
-    <div v-else-if="!menuItems.length" class="empty menu-empty">
-      菜单还是空的
-      <p class="muted">去「菜谱库」点卡片右上角的「🍽 上架」，把想吃的菜加进来</p>
-    </div>
-
-    <div class="grid" v-else>
-      <div
-        v-for="r in sorted" :key="r.id"
-        class="card menu-card"
-        :class="{ wanted: r.menu_want }"
-      >
-        <div class="cover">
-          <img v-if="r.cover_image" :src="mediaUrl(r.cover_image)" alt="" loading="lazy" decoding="async" @click="$router.push(`/recipe/${r.id}`)" />
-          <span v-else class="cover-fallback" @click="$router.push(`/recipe/${r.id}`)">🍳</span>
-          <button
-            class="want-btn"
-            :class="{ on: r.menu_want }"
-            @click.stop.prevent="toggleWant(r)"
-          ><Icon name="heart" :size="13" :stroke="r.menu_want ? 2.2 : 1.8" /> 想吃</button>
-          <button
-            class="off-btn"
-            title="从菜单下架"
-            @click.stop.prevent="takeOff(r)"
-          ><Icon name="close" :size="14" /></button>
+  <div class="menu-page">
+    <!-- Hero 渐变头 -->
+    <header class="hero">
+      <div class="blob blob-a"></div>
+      <div class="blob blob-b"></div>
+      <div class="hero-inner">
+        <div class="hero-mark"><Icon name="menu" :size="24" /></div>
+        <div class="hero-text">
+          <h1 class="hero-title">菜单 · 点餐</h1>
+          <p class="hero-sub">
+            {{ menuItems.length }} 道菜在菜单上
+            <span v-if="wantCount"> · 想吃 {{ wantCount }} 道</span>
+            <span v-if="totalPrice !== null" class="hero-total"> · 合计 ¥{{ totalPrice }}</span>
+          </p>
         </div>
-        <div class="body">
-          <div class="title-row">
-            <h3 @click="$router.push(`/recipe/${r.id}`)">{{ r.title }}</h3>
-            <span
-              v-if="editingPrice !== r.id"
-              class="price"
-              :class="{ unset: r.menu_price == null }"
-              title="点击设置价格"
-              @click.stop.prevent="startEditPrice(r)"
-            >{{ r.menu_price != null ? `¥${r.menu_price}` : '定价' }}</span>
-            <input
-              v-else
-              v-model.number="priceDraft"
-              type="number" min="0" max="99999" step="0.1"
-              class="price-input"
-              placeholder="元"
-              @keyup.enter="savePrice(r)"
-              @blur="savePrice(r)"
-              @click.stop
-              ref="priceInput"
-            />
+        <div class="hero-actions">
+          <a class="hero-btn" :href="menuPdfUrl" target="_blank" rel="noopener"><Icon name="printer" :size="15" /> 打印</a>
+          <button class="hero-btn primary" @click="openQr"><Icon name="qr" :size="15" /> 扫码点餐</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="content">
+      <div v-if="error" class="error">{{ error }}</div>
+      <div v-else-if="loading && !menuItems.length" class="empty">加载中…</div>
+      <div v-else-if="!menuItems.length" class="empty menu-empty">
+        菜单还是空的
+        <p class="muted">去「菜谱库」点卡片右上角的「🍽 上架」，把想吃的菜加进来</p>
+      </div>
+
+      <div v-else class="grid">
+        <div
+          v-for="(r, i) in sorted" :key="r.id"
+          class="card menu-card"
+          :class="{ wanted: r.menu_want }"
+          :style="{ '--i': i }"
+        >
+          <div class="cover">
+            <img v-if="r.cover_image" :src="mediaUrl(r.cover_image)" alt="" loading="lazy" decoding="async" @click="$router.push(`/recipe/${r.id}`)" />
+            <span v-else class="cover-fallback" @click="$router.push(`/recipe/${r.id}`)">🍳</span>
+            <button
+              class="want-btn"
+              :class="{ on: r.menu_want }"
+              @click.stop.prevent="toggleWant(r)"
+            ><Icon name="heart" :size="13" :stroke="r.menu_want ? 2.2 : 1.8" /> 想吃</button>
+            <button
+              class="off-btn"
+              title="从菜单下架"
+              @click.stop.prevent="takeOff(r)"
+            ><Icon name="close" :size="14" /></button>
           </div>
-          <div class="meta">
-            <span v-if="r.cooking_time_min" class="badge">⏱ {{ r.cooking_time_min }} 分钟</span>
-            <span v-if="r.servings" class="badge">{{ r.servings }}</span>
-          </div>
-          <div class="cat-row">
-            <span
-              class="cat-chip"
-              :class="{ set: r.menu_category, editing: editingCat === r.id }"
-              @click.stop.prevent="toggleCatEdit(r)"
-            >{{ r.menu_category ? r.menu_category : '＋ 分类' }}</span>
-            <div v-if="editingCat === r.id" class="cat-picker" @click.stop>
-              <button
-                v-for="c in presetCats" :key="c"
-                class="chip-mini"
-                :class="{ on: r.menu_category === c }"
-                @click="setCat(r, c)"
-              >{{ c }}</button>
-              <input v-model="catDraft" class="cat-input" placeholder="自定义…" @keyup.enter="setCat(r, catDraft)" />
-              <button class="chip-mini none" @click="setCat(r, '')">清除</button>
+          <div class="body">
+            <div class="title-row">
+              <h3 @click="$router.push(`/recipe/${r.id}`)">{{ r.title }}</h3>
+              <span
+                v-if="editingPrice !== r.id"
+                class="price"
+                :class="{ unset: r.menu_price == null }"
+                title="点击设置价格"
+                @click.stop.prevent="startEditPrice(r)"
+              >{{ r.menu_price != null ? '¥' + r.menu_price : '定价' }}</span>
+              <input
+                v-else
+                v-model.number="priceDraft"
+                type="number" min="0" max="99999" step="0.1"
+                class="price-input"
+                placeholder="元"
+                @keyup.enter="savePrice(r)"
+                @blur="savePrice(r)"
+                @click.stop
+                ref="priceInput"
+              />
+            </div>
+            <div class="meta">
+              <span v-if="r.cooking_time_min" class="meta-ic"><Icon name="clock" :size="12" /> {{ r.cooking_time_min }} 分钟</span>
+              <span v-if="r.servings" class="meta-ic"><Icon name="servings" :size="12" /> {{ r.servings }}</span>
+            </div>
+            <div class="cat-row">
+              <span
+                class="cat-chip"
+                :class="{ set: r.menu_category, editing: editingCat === r.id }"
+                @click.stop.prevent="toggleCatEdit(r)"
+              >{{ r.menu_category ? r.menu_category : '＋ 分类' }}</span>
+              <div v-if="editingCat === r.id" class="cat-picker" @click.stop>
+                <button
+                  v-for="c in presetCats" :key="c"
+                  class="chip-mini"
+                  :class="{ on: r.menu_category === c }"
+                  @click="setCat(r, c)"
+                >{{ c }}</button>
+                <input v-model="catDraft" class="cat-input" placeholder="自定义…" @keyup.enter="setCat(r, catDraft)" />
+                <button class="chip-mini none" @click="setCat(r, '')">清除</button>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- 点单记录 -->
-    <div v-if="orders.length" class="card orders-card">
-      <h2>📜 点单记录</h2>
-      <div v-for="o in orders" :key="o.id" class="order-item">
-        <div class="order-line">
-          <b>{{ o.person || '家人' }}</b>
-          <span class="status-chip" :class="o.status">{{ statusLabel(o.status) }}</span>
-          <span class="muted">{{ fmtTime(o.created_at) }}</span>
-          <span class="order-total">¥{{ o.total }}</span>
-          <button class="ghost" title="删除记录" @click="removeOrder(o)">✕</button>
-        </div>
-        <div class="order-items muted">
-          <span v-for="(it, i) in o.items" :key="i">{{ it.title }}×{{ it.qty }}<span v-if="i < o.items.length - 1">、</span></span>
-        </div>
-        <div v-if="o.status !== 'served'" class="order-actions">
-          <button v-if="o.status === 'pending'" class="chip-mini advance" @click="advanceOrder(o, 'making')">👨‍🍳 开始制作</button>
-          <button v-else-if="o.status === 'making'" class="chip-mini advance" @click="advanceOrder(o, 'served')"><Icon name="check" :size="12" /> 上菜</button>
+      <!-- 点单记录：进度可视化 -->
+      <div v-if="orders.length" class="card orders-card">
+        <h2><Icon name="menu" :size="16" /> 点单记录</h2>
+        <div v-for="(o, i) in orders" :key="o.id" class="order-item" :style="{ '--i': i }">
+          <div class="order-line">
+            <span class="order-person"><Icon name="bowl" :size="13" />{{ o.person || '家人' }}</span>
+            <span class="status-chip" :class="o.status">{{ statusLabel(o.status) }}</span>
+            <span class="muted">{{ fmtTime(o.created_at) }}</span>
+            <span class="order-total">¥{{ o.total }}</span>
+            <button class="ghost del-btn" title="删除记录" @click="removeOrder(o)"><Icon name="trash" :size="14" /></button>
+          </div>
+          <div class="order-items muted">
+            <span v-for="(it, j) in o.items" :key="j">{{ it.title }}×{{ it.qty }}<span v-if="j < o.items.length - 1">、</span></span>
+          </div>
+          <div class="order-actions">
+            <div class="mini-track">
+              <span v-for="(s, si) in ['pending', 'making', 'served']" :key="s" class="mini-dot"
+                :class="{ on: ['pending', 'making', 'served'].indexOf(s) <= ['pending', 'making', 'served'].indexOf(o.status), pulse: s === o.status && o.status !== 'served' }"></span>
+            </div>
+            <template v-if="o.status !== 'served'">
+              <button v-if="o.status === 'pending'" class="chip-mini advance" @click="advanceOrder(o, 'making')">👨‍🍳 开始制作</button>
+              <button v-else-if="o.status === 'making'" class="chip-mini advance serving" @click="advanceOrder(o, 'served')"><Icon name="check" :size="12" /> 上菜</button>
+            </template>
+          </div>
         </div>
       </div>
     </div>
@@ -113,7 +128,7 @@
     <!-- 扫码点餐弹窗 -->
     <div v-if="showQr" class="qr-overlay" @click.self="showQr = false">
       <div class="qr-card">
-        <h2>📱 扫码点餐</h2>
+        <h2><Icon name="qr" :size="18" /> 扫码点餐</h2>
         <p class="muted">手机连同一个 Wi-Fi，用微信扫一扫打开菜单</p>
         <img v-if="qrDataUrl" :src="qrDataUrl" class="qr-img" alt="扫码点餐二维码" />
         <code class="qr-url">{{ menuUrl }}</code>
@@ -122,6 +137,7 @@
     </div>
   </div>
 </template>
+
 
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
@@ -280,27 +296,68 @@ async function openQr() {
 onMounted(() => { load(); loadOrders() })
 </script>
 
+
+
 <style scoped>
-.head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
-.head h1 { font-size: 22px; }
-.total { color: var(--brand-deep); font-weight: 700; }
-.qr-btn {
-  background: #2e7d32; color: #fff;
-  display: inline-flex; align-items: center; gap: 6px;
+.menu-page {
+  background:
+    radial-gradient(900px 500px at 85% -80px, rgba(240, 106, 79, 0.14), transparent 60%),
+    radial-gradient(700px 400px at -15% 30%, rgba(245, 166, 35, 0.10), transparent 60%),
+    var(--bg);
+  min-height: 100vh;
+  margin: -26px -20px -64px;
+  padding: 26px 20px 70px;
 }
-.qr-btn:hover { opacity: 0.92; }
-.action-btn {
-  background: #5d4a36; color: #fff; text-decoration: none;
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 9px 16px; border-radius: 10px; font-size: 14px; font-weight: 600;
+/* ---- Hero ---- */
+.hero {
+  position: relative; overflow: hidden;
+  background: linear-gradient(135deg, #f4704f 0%, #e5533c 52%, #d43a2a 100%);
+  border-radius: 24px;
+  padding: 22px 22px;
+  color: #fff;
+  box-shadow: 0 14px 34px rgba(229, 83, 60, 0.28);
+  margin-bottom: 16px;
 }
-.action-btn:hover { opacity: 0.92; }
-.head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.blob { position: absolute; border-radius: 50%; filter: blur(46px); opacity: 0.55; pointer-events: none; animation: blob-float 9s ease-in-out infinite alternate; }
+.blob-a { width: 220px; height: 220px; background: rgba(255, 214, 145, 0.85); top: -60px; left: -50px; }
+.blob-b { width: 180px; height: 180px; background: rgba(255, 122, 88, 0.8); bottom: -70px; right: -30px; animation-delay: -4.5s; }
+@keyframes blob-float { from { transform: translate(0, 0) scale(1); } to { transform: translate(26px, 14px) scale(1.14); } }
+.hero-inner { position: relative; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.hero-mark {
+  width: 50px; height: 50px; border-radius: 16px; flex: none;
+  background: rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+.hero-text { flex: 1; min-width: 0; }
+.hero-title { font-size: 22px; font-weight: 800; letter-spacing: 1px; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.14); }
+.hero-sub { font-size: 12.5px; opacity: 0.95; margin-top: 3px; }
+.hero-total { font-weight: 800; color: #ffe0d6; }
+.hero-actions { display: flex; gap: 8px; width: 100%; }
+.hero-btn {
+  flex: 1; justify-content: center;
+  background: rgba(255, 255, 255, 0.16); color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 14px; border-radius: 12px;
+  font-size: 14px; font-weight: 600; text-decoration: none;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  transition: background 0.15s, transform 0.15s;
+}
+.hero-btn:hover { background: rgba(255, 255, 255, 0.28); }
+.hero-btn:active { transform: scale(0.97); }
+.hero-btn.primary { background: #fff; color: #c9442e; font-weight: 800; }
+.hero-btn.primary:hover { background: #fff4ef; }
+
+/* ---- 卡片 ---- */
 .menu-empty { line-height: 2; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
-.menu-card { padding: 0; overflow: hidden; transition: transform 0.12s, box-shadow 0.12s; }
+.menu-card { padding: 0; overflow: hidden; transition: transform 0.12s, box-shadow 0.12s, border-color 0.2s; animation: rise 0.5s ease both; animation-delay: calc(var(--i) * 55ms); }
+@keyframes rise { from { opacity: 0; transform: translateY(16px) scale(0.98); } to { opacity: 1; transform: none; } }
 .menu-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
-.menu-card.wanted { border: 2px solid var(--brand); }
+.menu-card.wanted { border: 2px solid rgba(229, 83, 60, 0.5); box-shadow: 0 8px 22px rgba(229, 83, 60, 0.10); }
 .cover { position: relative; height: 150px; background: #f5efe8; display: flex; align-items: center; justify-content: center; }
 .cover img { width: 100%; height: 100%; object-fit: cover; cursor: pointer; transition: transform 0.35s ease; }
 .menu-card:hover .cover img { transform: scale(1.06); }
@@ -313,7 +370,8 @@ onMounted(() => { load(); loadOrders() })
   display: inline-flex; align-items: center; gap: 4px;
   backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
 }
-.want-btn.on { background: var(--brand-grad); box-shadow: 0 2px 8px rgba(229, 83, 60, 0.35); }
+.want-btn.on { background: var(--brand-grad); box-shadow: 0 2px 8px rgba(229, 83, 60, 0.35); animation: want-pop 0.3s ease; }
+@keyframes want-pop { 0% { transform: scale(0.8); } 60% { transform: scale(1.1); } 100% { transform: scale(1); } }
 .want-btn.on :deep(.icon) { fill: currentColor; }
 .off-btn {
   position: absolute; top: 8px; right: 8px;
@@ -332,9 +390,11 @@ onMounted(() => { load(); loadOrders() })
   flex: none; font-size: 15px; font-weight: 800; color: var(--brand-deep);
   cursor: pointer; padding: 2px 8px; border-radius: 8px; background: var(--brand-soft);
 }
+.price i { font-style: normal; font-size: 12px; }
 .price.unset { color: #a08d7a; font-weight: 600; font-size: 13px; }
 .price-input { flex: none; width: 74px; padding: 3px 8px; font-size: 14px; border-radius: 8px; }
-.meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+.meta-ic { display: inline-flex; align-items: center; gap: 3px; color: #a08d7a; font-size: 12px; background: #f7f3ec; border-radius: 10px; padding: 2px 8px; }
 
 /* 分类 */
 .cat-row { position: relative; margin-top: 6px; }
@@ -345,13 +405,14 @@ onMounted(() => { load(); loadOrders() })
 .cat-chip.set { color: #7a5b2e; background: #fdf3dc; font-weight: 600; }
 .cat-picker {
   position: absolute; left: 0; top: 26px; z-index: 30;
-  background: #fff; border-radius: 10px; padding: 8px;
+  background: #fff; border-radius: 12px; padding: 8px;
   box-shadow: var(--shadow-lg); border: 1px solid var(--line);
   display: flex; flex-wrap: wrap; gap: 6px; width: 220px;
 }
 .chip-mini {
   background: #f3ede5; color: #6b5d4e; border-radius: 14px;
   padding: 3px 10px; font-size: 12px; font-weight: 500;
+  display: inline-flex; align-items: center; gap: 4px;
 }
 .chip-mini.on { background: var(--brand); color: #fff; }
 .chip-mini.none { background: #fdecec; color: #d33; }
@@ -359,44 +420,50 @@ onMounted(() => { load(); loadOrders() })
 
 /* 点单记录 */
 .orders-card { margin-top: 18px; }
-.orders-card h2 { font-size: 16px; font-weight: 700; color: #2f2a24; margin-bottom: 10px; }
-.order-item { padding: 9px 0; border-bottom: 1px dashed var(--line); }
+.orders-card h2 { display: flex; align-items: center; gap: 6px; font-size: 16px; font-weight: 800; color: #2f2a24; margin-bottom: 10px; }
+.order-item { padding: 12px 0; border-bottom: 1px dashed var(--line); animation: rise 0.4s ease both; animation-delay: calc(var(--i) * 40ms); }
 .order-item:last-child { border-bottom: none; }
 .order-line { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.order-person { display: inline-flex; align-items: center; gap: 4px; color: #2f2a24; font-weight: 700; }
 .order-total { margin-left: auto; color: var(--brand-deep); font-weight: 800; font-size: 15px; }
-.order-items { font-size: 12.5px; margin-top: 2px; }
-.status-chip {
-  font-size: 11px; font-weight: 700; border-radius: 10px; padding: 1px 8px;
-}
+.del-btn { display: inline-flex; }
+.order-items { font-size: 12.5px; margin-top: 3px; }
+.status-chip { font-size: 11px; font-weight: 700; border-radius: 10px; padding: 1px 8px; }
 .status-chip.pending { background: #fff3e0; color: #c97900; }
 .status-chip.making { background: #e3f2fd; color: #1565c0; }
 .status-chip.served { background: #e8f5e9; color: #2e7d32; }
-.order-actions { margin-top: 6px; }
+.order-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+.mini-track { display: flex; align-items: center; gap: 5px; }
+.mini-dot { width: 9px; height: 9px; border-radius: 50%; background: #e8dfd2; transition: background 0.3s; }
+.mini-dot.on { background: var(--brand); }
+.mini-dot.pulse { animation: dot-pulse2 1.2s ease-in-out infinite; }
+@keyframes dot-pulse2 { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.4); } }
 .chip-mini.advance { cursor: pointer; }
+.chip-mini.advance.serving { background: #2e7d32; color: #fff; }
 
 /* 扫码弹窗 */
 .qr-overlay {
   position: fixed; inset: 0; z-index: 120;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(30, 22, 14, 0.55);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   display: flex; align-items: center; justify-content: center; padding: 20px;
 }
 .qr-card {
-  background: #fff; border-radius: 16px; padding: 24px;
+  background: rgba(255, 255, 255, 0.96); border-radius: 20px; padding: 24px;
   display: flex; flex-direction: column; align-items: center; gap: 10px;
   max-width: 340px; width: 100%; text-align: center;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.28);
+  animation: rise 0.25s ease;
 }
-.qr-card h2 { font-size: 18px; color: #2f2a24; }
-.qr-img { width: 240px; height: 240px; border-radius: 8px; }
+.qr-card h2 { display: flex; align-items: center; gap: 6px; font-size: 18px; color: #2f2a24; }
+.qr-img { width: 240px; height: 240px; border-radius: 12px; background: #fff; padding: 6px; }
 .qr-url { font-size: 12px; color: #888; word-break: break-all; background: #f7f3ec; padding: 4px 10px; border-radius: 6px; }
 
 /* ---- 移动端 ---- */
 @media (max-width: 768px) {
-  .head { flex-direction: column; align-items: stretch; gap: 10px; }
-  .head h1 { font-size: 20px; }
-  .head-actions { width: 100%; flex-wrap: nowrap; }
-  .head-actions .action-btn, .head-actions .qr-btn {
-    flex: 1; justify-content: center; width: auto; padding: 10px 8px;
-  }
+  .menu-page { margin: -14px -12px -96px; padding: 14px 12px 100px; }
+  .hero { padding: 18px 16px; border-radius: 20px; }
+  .hero-title { font-size: 20px; }
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .cover { height: 96px; }
   .cover-fallback { font-size: 32px; }

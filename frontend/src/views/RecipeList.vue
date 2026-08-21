@@ -1,12 +1,24 @@
 <template>
-  <div>
+  <div class="list-page">
+    <!-- 顶部横幅 -->
+    <div class="strip">
+      <div>
+        <h1 class="strip-title">{{ status === 'draft' ? '草稿箱' : '菜谱库' }}</h1>
+        <p class="strip-sub">{{ total }} 个菜谱 · 今天想做什么？</p>
+      </div>
+      <div class="strip-icon"><Icon name="bowl" :size="22" /></div>
+    </div>
+
     <div class="toolbar">
-      <input
-        v-model="searchText"
-        class="search"
-        placeholder="🔍 搜索菜名 / 食材 / 步骤…"
-        @input="onSearchInput"
-      />
+      <div class="search-wrap">
+        <Icon name="search" :size="16" />
+        <input
+          v-model="searchText"
+          class="search"
+          placeholder="搜索菜名 / 食材 / 步骤…"
+          @input="onSearchInput"
+        />
+      </div>
       <div class="chips" v-if="tags.length">
         <button
           v-for="t in tags"
@@ -18,8 +30,6 @@
       </div>
     </div>
 
-    <div class="count muted">{{ total }} 个菜谱</div>
-
     <div v-if="error" class="error">{{ error }}</div>
     <div v-else-if="loading && !items.length" class="grid">
       <div v-for="i in 6" :key="i" class="card recipe-card skel"> </div>
@@ -30,10 +40,11 @@
 
     <div class="grid" v-else>
       <router-link
-        v-for="r in items"
+        v-for="(r, i) in items"
         :key="r.id"
         :to="`/recipe/${r.id}`"
         class="card recipe-card"
+        :style="{ '--i': i }"
       >
         <div class="cover">
           <img v-if="r.cover_image" :src="mediaUrl(r.cover_image)" alt="" loading="lazy" decoding="async" />
@@ -64,6 +75,8 @@
     </div>
   </div>
 </template>
+
+
 
 <script setup>
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
@@ -147,26 +160,59 @@ onMounted(async () => {
 onBeforeUnmount(() => clearTimeout(debounceTimer))
 </script>
 
+
 <style scoped>
+.list-page {
+  background:
+    radial-gradient(900px 500px at 85% -80px, rgba(240, 106, 79, 0.14), transparent 60%),
+    radial-gradient(700px 400px at -15% 30%, rgba(245, 166, 35, 0.10), transparent 60%),
+    var(--bg);
+  min-height: 100vh;
+  margin: -26px -20px -64px;
+  padding: 26px 20px 70px;
+}
+/* 顶部横幅（柔和渐变条） */
+.strip {
+  display: flex; align-items: center; justify-content: space-between;
+  background: linear-gradient(120deg, #fdeeea, #fdf3dc);
+  border: 1px solid rgba(240, 229, 216, 0.9);
+  border-radius: 20px;
+  padding: 14px 20px;
+  margin-bottom: 14px;
+}
+.strip-title { font-size: 20px; font-weight: 800; color: #2f2a24; }
+.strip-sub { font-size: 12.5px; color: #a08d7a; margin-top: 3px; }
+.strip-icon {
+  width: 44px; height: 44px; border-radius: 14px; flex: none;
+  background: var(--brand-grad); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 16px rgba(229, 83, 60, 0.3);
+}
 .toolbar { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
-.search { max-width: 420px; }
+.search-wrap {
+  display: flex; align-items: center; gap: 8px;
+  background: #fff; border: 1.5px solid #e7e0d6;
+  border-radius: 14px; padding: 0 14px;
+  max-width: 440px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  color: #b8a893;
+}
+.search-wrap:focus-within { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(229, 83, 60, 0.12); color: var(--brand); }
+.search { border: none; padding: 10px 0; box-shadow: none !important; background: transparent; }
+.search:focus { box-shadow: none !important; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {
-  background: #fff;
-  color: #666;
-  border: 1px solid #e5dfd8;
-  border-radius: 20px;
-  padding: 4px 14px;
-  font-size: 13px;
+  background: #fff; color: #7a6a58;
+  border: 1px solid #e5dfd8; border-radius: 20px;
+  padding: 4px 14px; font-size: 13px; font-weight: 600;
+  transition: all 0.15s;
 }
-.chip.active { background: #e5533c; color: #fff; border-color: #e5533c; }
-.count { margin-bottom: 12px; }
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 16px;
-}
-.recipe-card { display: block; text-decoration: none; color: inherit; padding: 0; overflow: hidden; transition: transform 0.12s, box-shadow 0.12s; }
+.chip:hover { border-color: rgba(229, 83, 60, 0.5); color: var(--brand-deep); }
+.chip.active { background: var(--brand-grad); color: #fff; border-color: transparent; box-shadow: 0 4px 12px rgba(229, 83, 60, 0.3); }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+.recipe-card { display: block; text-decoration: none; color: inherit; padding: 0; overflow: hidden; transition: transform 0.12s, box-shadow 0.12s; animation: rise 0.5s ease both; animation-delay: calc(var(--i) * 50ms); }
+@keyframes rise { from { opacity: 0; transform: translateY(16px) scale(0.98); } to { opacity: 1; transform: none; } }
 .recipe-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
 .recipe-card:hover .cover img { transform: scale(1.06); }
 .skel { height: 240px; position: relative; overflow: hidden; }
@@ -202,8 +248,10 @@ onBeforeUnmount(() => clearTimeout(debounceTimer))
 .meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
 .meta-ic { display: inline-flex; align-items: center; gap: 3px; color: #a08d7a; font-size: 12.5px; background: #f7f3ec; border-radius: 10px; padding: 2px 8px; }
 
-/* ---- 移动端 ---- */
 @media (max-width: 768px) {
+  .list-page { margin: -14px -12px -96px; padding: 14px 12px 100px; }
+  .strip { padding: 12px 14px; border-radius: 16px; }
+  .strip-title { font-size: 18px; }
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .cover { height: 96px; }
   .cover-fallback { font-size: 32px; }
@@ -211,5 +259,6 @@ onBeforeUnmount(() => clearTimeout(debounceTimer))
   .body h3 { font-size: 14px; }
   .cover-action { width: 28px; height: 28px; }
   .skel { height: 170px; }
+  .search-wrap { max-width: none; }
 }
 </style>
