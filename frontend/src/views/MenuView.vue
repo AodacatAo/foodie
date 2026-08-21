@@ -33,7 +33,7 @@
         <div
           v-for="(r, i) in sorted" :key="r.id"
           class="card menu-card"
-          :class="{ wanted: r.menu_want }"
+          :class="{ wanted: r.menu_want, 'cat-editing': editingCat === r.id }"
           :style="{ '--i': i }"
         >
           <div class="cover">
@@ -354,11 +354,11 @@ onMounted(() => { load(); loadOrders() })
 /* ---- 卡片 ---- */
 .menu-empty { line-height: 2; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
-.menu-card { padding: 0; overflow: hidden; transition: transform 0.12s, box-shadow 0.12s, border-color 0.2s; animation: rise 0.5s ease both; animation-delay: calc(var(--i) * 55ms); }
+.menu-card { padding: 0; transition: transform 0.12s, box-shadow 0.12s, border-color 0.2s; animation: rise 0.5s ease both; animation-delay: calc(var(--i) * 55ms); }
 @keyframes rise { from { opacity: 0; transform: translateY(16px) scale(0.98); } to { opacity: 1; transform: none; } }
 .menu-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
 .menu-card.wanted { border: 2px solid rgba(229, 83, 60, 0.5); box-shadow: 0 8px 22px rgba(229, 83, 60, 0.10); }
-.cover { position: relative; height: 150px; background: #f5efe8; display: flex; align-items: center; justify-content: center; }
+.cover { position: relative; height: 150px; background: #f5efe8; display: flex; align-items: center; justify-content: center; border-radius: 13px 13px 0 0; overflow: hidden; }
 .cover img { width: 100%; height: 100%; object-fit: cover; cursor: pointer; transition: transform 0.35s ease; }
 .menu-card:hover .cover img { transform: scale(1.06); }
 .cover-fallback { font-size: 40px; cursor: pointer; }
@@ -403,8 +403,9 @@ onMounted(() => { load(); loadOrders() })
   background: #f7f3ec; border-radius: 10px; padding: 2px 9px;
 }
 .cat-chip.set { color: #7a5b2e; background: #fdf3dc; font-weight: 600; }
+.menu-card.cat-editing { position: relative; z-index: 45; }
 .cat-picker {
-  position: absolute; left: 0; top: 26px; z-index: 30;
+  position: absolute; left: 0; top: 26px; z-index: 60; max-width: calc(100vw - 40px);
   background: #fff; border-radius: 12px; padding: 8px;
   box-shadow: var(--shadow-lg); border: 1px solid var(--line);
   display: flex; flex-wrap: wrap; gap: 6px; width: 220px;
@@ -461,6 +462,7 @@ onMounted(() => { load(); loadOrders() })
 
 /* ---- 移动端 ---- */
 @media (max-width: 768px) {
+  .cat-picker { left: 0; right: auto; }
   .menu-page { margin: -14px -12px -96px; padding: 14px 12px 100px; }
   .hero { padding: 18px 16px; border-radius: 20px; }
   .hero-title { font-size: 20px; }
