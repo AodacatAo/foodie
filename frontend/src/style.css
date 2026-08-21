@@ -15,7 +15,15 @@
   --shadow-lg: 0 12px 32px rgba(93, 63, 41, 0.14), 0 4px 10px rgba(93, 63, 41, 0.08);
   --radius: 14px;
   --radius-sm: 10px;
+  /* 骨架屏抖动 */
+  --skeleton: linear-gradient(100deg, #f2ece4 40%, #faf6f0 50%, #f2ece4 60%);
 }
+
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* 页面标题统一（食集风格：橙色圆点前缀由页面自行处理） */
+.page-title { font-size: 24px; font-weight: 800; color: #2f2a24; margin-bottom: 6px; }
+.page-sub { color: var(--text-3); font-size: 13.5px; margin-bottom: 16px; }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { -webkit-text-size-adjust: 100%; }

@@ -21,7 +21,9 @@
     <div class="count muted">{{ total }} 个菜谱</div>
 
     <div v-if="error" class="error">{{ error }}</div>
-    <div v-else-if="loading && !items.length" class="empty">加载中…</div>
+    <div v-else-if="loading && !items.length" class="grid">
+      <div v-for="i in 6" :key="i" class="card recipe-card skel"> </div>
+    </div>
     <div v-else-if="!items.length" class="empty">
       {{ status === 'draft' ? '草稿箱是空的，去「导入」添加一个吧' : '还没有菜谱，去「导入」添加一个吧' }}
     </div>
@@ -36,21 +38,23 @@
         <div class="cover">
           <img v-if="r.cover_image" :src="mediaUrl(r.cover_image)" alt="" loading="lazy" decoding="async" />
           <span v-else class="cover-fallback">🍳</span>
-          <span v-if="r.status === 'draft'" class="draft-badge">草稿</span>
-          <span v-if="r.on_menu" class="menu-badge">菜单中</span>
+          <div class="cover-tags">
+            <span v-if="r.status === 'draft'" class="pill draft-pill">草稿</span>
+            <span v-if="r.on_menu" class="pill menu-pill">菜单中</span>
+          </div>
           <button
-            class="menu-btn"
+            class="cover-action"
             :class="{ on: r.on_menu }"
             :title="r.on_menu ? '从菜单下架' : '上架到菜单'"
             @click.stop.prevent="toggleMenu(r)"
-          >{{ r.on_menu ? '✓ 已上架' : '🍽 上架' }}</button>
+          ><Icon :name="r.on_menu ? 'close' : 'menu'" :size="14" /></button>
         </div>
         <div class="body">
           <h3>{{ r.title }}</h3>
           <div class="meta">
             <span v-if="r.author" class="muted">{{ r.author }}</span>
-            <span v-if="r.cooking_time_min" class="badge">⏱ {{ r.cooking_time_min }} 分钟</span>
-            <span v-if="r.servings" class="badge">{{ r.servings }}</span>
+            <span v-if="r.cooking_time_min" class="meta-ic"><Icon name="clock" :size="13" /> {{ r.cooking_time_min }} 分钟</span>
+            <span v-if="r.servings" class="meta-ic"><Icon name="servings" :size="13" /> {{ r.servings }}</span>
           </div>
           <div v-if="r.tags && r.tags.length">
             <span v-for="t in r.tags" :key="t" class="tag">{{ t }}</span>
@@ -65,6 +69,7 @@
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api, mediaUrl } from '../api'
+import Icon from '../components/Icon.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -164,40 +169,38 @@ onBeforeUnmount(() => clearTimeout(debounceTimer))
 .recipe-card { display: block; text-decoration: none; color: inherit; padding: 0; overflow: hidden; transition: transform 0.12s, box-shadow 0.12s; }
 .recipe-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
 .recipe-card:hover .cover img { transform: scale(1.06); }
+.skel { height: 240px; position: relative; overflow: hidden; }
+.skel::after {
+  content: ''; position: absolute; inset: 0;
+  background: var(--skeleton); background-size: 200% 100%;
+  animation: shimmer 1.6s infinite;
+}
 .cover { position: relative; height: 150px; background: #f5efe8; display: flex; align-items: center; justify-content: center; }
 .cover img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.35s ease; }
 .cover-fallback { font-size: 40px; }
-.draft-badge {
-  position: absolute; top: 8px; left: 8px;
-  background: #f5a623; color: #fff; font-size: 12px;
-  border-radius: 10px; padding: 1px 8px;
+.cover-tags { position: absolute; top: 8px; left: 8px; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.pill {
+  font-size: 11px; font-weight: 700; color: #fff; line-height: 1.4;
+  border-radius: 9px; padding: 2px 8px;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
 }
-.menu-badge {
-  position: absolute; top: 8px; left: 8px;
-  background: rgba(46, 125, 50, 0.92); color: #fff; font-size: 12px;
-  border-radius: 10px; padding: 1px 8px;
-}
-.draft-badge + .menu-badge, .menu-badge + .menu-badge { display: none; }
-.menu-badge { margin-top: 0; }
-.draft-badge:not(:only-child) { top: 8px; }
-.menu-badge { top: 8px; }
-/* 草稿和菜单角标并存时错开 */
-.cover .draft-badge + .menu-badge { top: 30px; left: 8px; }
-.menu-btn {
+.draft-pill { background: rgba(245, 166, 35, 0.9); }
+.menu-pill { background: rgba(46, 125, 50, 0.82); }
+.cover-action {
   position: absolute; top: 8px; right: 8px;
-  background: rgba(0, 0, 0, 0.5); color: #fff;
-  border-radius: 14px; padding: 4px 12px;
-  font-size: 12.5px; font-weight: 600;
-  display: none; align-items: center;
-  backdrop-filter: blur(4px);
+  width: 30px; height: 30px; padding: 0;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.42); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
 }
-.recipe-card:hover .menu-btn { display: inline-flex; }
-.menu-btn:hover { background: var(--brand); }
-.menu-btn.on { background: rgba(46, 125, 50, 0.92); }
-.menu-btn.on:hover { background: #1e6b22; }
+.cover-action:hover { opacity: 1; background: var(--brand); }
+.cover-action.on { background: rgba(46, 125, 50, 0.9); }
+.cover-action.on:hover { background: #1e6b22; }
 .body { padding: 12px 14px; }
 .body h3 { font-size: 15.5px; font-weight: 700; margin-bottom: 7px; color: #2f2a24; }
-.meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+.meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+.meta-ic { display: inline-flex; align-items: center; gap: 3px; color: #a08d7a; font-size: 12.5px; background: #f7f3ec; border-radius: 10px; padding: 2px 8px; }
 
 /* ---- 移动端 ---- */
 @media (max-width: 768px) {
@@ -206,8 +209,7 @@ onBeforeUnmount(() => clearTimeout(debounceTimer))
   .cover-fallback { font-size: 32px; }
   .body { padding: 8px 10px; }
   .body h3 { font-size: 14px; }
-  /* 触屏没有 hover：上架按钮常显 */
-  .menu-btn { display: inline-flex; padding: 4px 10px; font-size: 12px; }
-  .recipe-card:hover .menu-btn { display: inline-flex; }
+  .cover-action { width: 28px; height: 28px; }
+  .skel { height: 170px; }
 }
 </style>

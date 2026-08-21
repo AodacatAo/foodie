@@ -2,7 +2,7 @@
   <div v-if="error" class="error">{{ error }}</div>
   <div v-else-if="!recipe" class="empty">加载中…</div>
   <template v-else>
-    <button class="ghost back" @click="$router.back()">← 返回</button>
+    <button class="ghost back" @click="$router.back()"><Icon name="back" :size="15" /> 返回</button>
 
     <div v-if="recipe.status === 'draft'" class="draft-banner">
       ⚠️ 这是导入生成的草稿，请核对内容后确认发布
@@ -26,9 +26,9 @@
       <div class="card head">
         <h1>{{ recipe.title }}</h1>
         <div class="meta">
-          <span v-if="recipe.author" class="badge">👩‍🍳 {{ recipe.author }}</span>
-          <span v-if="recipe.cooking_time_min" class="badge">⏱ {{ recipe.cooking_time_min }} 分钟</span>
-          <span v-if="recipe.servings" class="badge">🍽 {{ recipe.servings }}</span>
+          <span v-if="recipe.author" class="meta-ic"><Icon name="bowl" :size="13" /> {{ recipe.author }}</span>
+          <span v-if="recipe.cooking_time_min" class="meta-ic"><Icon name="clock" :size="13" /> {{ recipe.cooking_time_min }} 分钟</span>
+          <span v-if="recipe.servings" class="meta-ic"><Icon name="servings" :size="13" /> {{ recipe.servings }}</span>
           <span v-if="recipe.source_url">
             <a :href="recipe.source_url" target="_blank" rel="noopener">来源链接 ↗</a>
           </span>
@@ -44,10 +44,10 @@
           class="video-player"
         ></video>
         <div v-if="recipe.status === 'published'" class="head-actions">
-          <button class="secondary" @click="makeShare">📤 分享卡片</button>
-          <button class="secondary" @click="editing = true">✏️ 编辑</button>
+          <button class="secondary" @click="makeShare"><Icon name="share" :size="14" /> 分享卡片</button>
+          <button class="secondary" @click="editing = true"><Icon name="edit" :size="14" /> 编辑</button>
           <button class="secondary danger" :class="{ confirming: confirmDel === 'recipe' }" @click="askDelete('recipe')">
-            {{ confirmDel === 'recipe' ? '再点确认' : '🗑 删除' }}
+            <Icon name="trash" :size="14" /> {{ confirmDel === 'recipe' ? '再点确认' : '删除' }}
           </button>
         </div>
       </div>
@@ -106,6 +106,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api, mediaUrl } from '../api'
+import Icon from '../components/Icon.vue'
 import RecipeEditor from '../components/RecipeEditor.vue'
 
 const route = useRoute()
@@ -188,7 +189,7 @@ onMounted(load)
 </script>
 
 <style scoped>
-.back { margin-bottom: 12px; }
+.back { margin-bottom: 12px; display: inline-flex; align-items: center; gap: 5px; }
 .draft-banner {
   background: #fff7e6; border: 1px solid #f5c26b; color: #8a6100;
   border-radius: 10px; padding: 12px 16px; margin-bottom: 14px;
@@ -198,10 +199,13 @@ onMounted(load)
 .head { margin-bottom: 14px; }
 .head h1 { font-size: 24px; margin-bottom: 8px; }
 .meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+.meta-ic {
+  display: inline-flex; align-items: center; gap: 4px;
+  color: #a08d7a; font-size: 12.5px; background: #f7f3ec; border-radius: 10px; padding: 2px 8px;
+}
 .meta a { color: #e5533c; font-size: 13px; }
 .desc { margin-top: 10px; color: #555; white-space: pre-wrap; font-size: 14px; }
 .video-player { width: 100%; max-width: 340px; border-radius: 10px; margin-top: 12px; }
-.head-actions { margin-top: 12px; display: flex; gap: 8px; }
 .danger { background: #fdecec; color: #d33; }
 .confirming { background: #d33 !important; color: #fff !important; }
 .columns { display: grid; grid-template-columns: 1fr 1.6fr; gap: 14px; }
@@ -219,7 +223,9 @@ onMounted(load)
 .step { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px dashed #eee; }
 .step-title { font-size: 15px; margin-bottom: 4px; }
 .step p { white-space: pre-wrap; font-size: 14px; color: #444; }
-.step-img { margin-top: 8px; max-width: 100%; border-radius: 8px; }
+.step-img { margin-top: 8px; max-width: 100%; border-radius: 10px; }
+.head-actions { margin-top: 12px; display: flex; gap: 8px; }
+.head-actions button { display: inline-flex; align-items: center; gap: 5px; }
 
 /* 分享卡片弹窗 */
 .share-overlay {

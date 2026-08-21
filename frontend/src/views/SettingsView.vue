@@ -1,9 +1,9 @@
 <template>
   <div>
-    <h1 class="page-title">⚙️ 设置</h1>
+    <h1 class="page-title">设置</h1>
 
     <div class="card">
-      <h2>📶 局域网访问</h2>
+      <h2>局域网访问</h2>
       <p class="muted">手机 / 平板连同一个 Wi-Fi 打开下面地址即可，<b>免登录</b>（外网访问才需要密码，登录一次管一年）。</p>
       <div v-if="net.ips.length" class="lan-ips">
         <div v-for="ip in net.ips" :key="ip" class="lan-row">
@@ -16,7 +16,7 @@
     </div>
 
     <div class="card">
-      <h2>ℹ️ 关于</h2>
+      <h2>关于</h2>
       <p class="muted">食集 · 本地美食库：菜谱 + 菜单点餐，数据全部存在 NAS（/share/ZFS2_DATA/foodie/data/），每日异池备份。</p>
     </div>
   </div>

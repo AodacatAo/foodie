@@ -365,3 +365,11 @@ foodie/
 **C1 订单状态机**：`orders.status`（迁移 v4：pending→making→served）。管理端点单记录「开始制作/上菜」，`POST /api/orders/{id}/status`；上菜时微信通知。用户端点单后本地轮询（8s，2h 上限），「已下单→制作中→已上菜」进度条；刷新页面后凭 `foodie_last_order`（localStorage）恢复轮询。
 
 **C3 打印版菜单 PDF**：管理端「🖨 打印菜单」→ `GET /api/recipes/menu.pdf?origin=` → `services/menu_pdf.py`（reportlab，A4 双栏按分类分节 + 页脚扫码点餐二维码指向 `{origin}/#/order`）。中文字体：容器 wqy-microhei.ttc（TrueType）→ reportlab 内置 CID `STSong-Light`（本机 PingFang 为 CFF 字体 reportlab 不支持，已踩坑）→ Helvetica 兜底。依赖新增 `reportlab>=4.0`、`qrcode>=7.4`。
+
+---
+
+## 前端视觉统一（2026-08 · 第四批）
+
+- **导航重构**：新增 `components/Icon.vue`（SVG stroke 图标库，替代原 emoji，跨端渲染一致）；桌面玻璃顶栏与手机底部悬浮 Tabbar 共用同一套「active 判定」（按 route.name + query.status 精确匹配），修复「菜谱库/草稿箱」双高亮 bug；手机 Tabbar 激活项为品牌渐变胶囊
+- **设计系统增强**：容器放宽到 1200px、`--skeleton` 骨架屏 shimmer、`.page-title/.page-sub` 统一页面标题、毛玻璃（backdrop-filter）角标/操作钮、聚焦描边统一
+- **页面细节**：列表卡片角标重排（草稿/菜单中毛玻璃小标签左上角，上架操作改图标钮右上角，桌面/手机一致）；菜单「想吃」毛玻璃胶囊 + 激活渐变；详情页步骤图圆角、meta 图标化；点餐页分类栏毛玻璃吸顶、购物车深色渐变条

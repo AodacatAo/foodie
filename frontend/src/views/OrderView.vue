@@ -1,7 +1,7 @@
 <template>
   <div class="order-page">
     <header class="order-head">
-      <h1>📋 食集菜单</h1>
+      <h1>食集菜单</h1>
       <p class="muted">{{ menuItems.length }} 道菜</p>
     </header>
 
@@ -290,7 +290,9 @@ onBeforeUnmount(stopPolling)
   position: sticky; top: 0; z-index: 20;
   display: flex; gap: 8px; overflow-x: auto;
   padding: 8px 12px; margin: 0 -12px 10px;
-  background: var(--bg); scrollbar-width: none;
+  background: rgba(250, 247, 243, 0.88);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  scrollbar-width: none;
 }
 .cat-bar::-webkit-scrollbar { display: none; }
 .cat-tab {
@@ -329,7 +331,7 @@ onBeforeUnmount(stopPolling)
 /* 底部购物车栏 */
 .order-bar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
-  background: #2f2a24; color: #eee;
+  background: linear-gradient(100deg, #2f2a24, #3d332a); color: #eee;
   padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
   display: flex; align-items: center; gap: 12px;
   cursor: pointer;

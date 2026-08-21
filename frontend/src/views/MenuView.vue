@@ -2,7 +2,7 @@
   <div>
     <div class="head">
       <div>
-        <h1>📋 菜单 · 点餐</h1>
+        <h1 class="page-title">菜单 · 点餐</h1>
         <p class="muted">
           {{ menuItems.length }} 道菜在菜单上
           <span v-if="wantCount"> · 今天想吃 {{ wantCount }} 道</span>
@@ -10,8 +10,8 @@
         </p>
       </div>
       <div class="head-actions">
-        <a class="qr-btn pdf-btn" :href="menuPdfUrl" target="_blank" rel="noopener">🖨 打印菜单</a>
-        <button class="qr-btn" @click="openQr">📱 扫码点餐</button>
+        <a class="action-btn" :href="menuPdfUrl" target="_blank" rel="noopener"><Icon name="printer" :size="15" /> 打印菜单</a>
+        <button class="qr-btn" @click="openQr"><Icon name="qr" :size="15" /> 扫码点餐</button>
       </div>
     </div>
 
@@ -35,12 +35,12 @@
             class="want-btn"
             :class="{ on: r.menu_want }"
             @click.stop.prevent="toggleWant(r)"
-          >{{ r.menu_want ? '❤️ 想吃' : '🤍 想吃' }}</button>
+          ><Icon name="heart" :size="13" :stroke="r.menu_want ? 2.2 : 1.8" /> 想吃</button>
           <button
             class="off-btn"
             title="从菜单下架"
             @click.stop.prevent="takeOff(r)"
-          >✕</button>
+          ><Icon name="close" :size="14" /></button>
         </div>
         <div class="body">
           <div class="title-row">
@@ -127,6 +127,7 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import QRCode from 'qrcode'
 import { api, mediaUrl } from '../api'
+import Icon from '../components/Icon.vue'
 
 const items = ref([])
 const error = ref('')
@@ -283,14 +284,17 @@ onMounted(() => { load(); loadOrders() })
 .head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
 .head h1 { font-size: 22px; }
 .total { color: var(--brand-deep); font-weight: 700; }
-.qr-btn { background: #2e7d32; }
-.qr-btn:hover { opacity: 0.9; }
-.pdf-btn {
-  background: #5d4a36; color: #fff; text-decoration: none;
-  display: inline-flex; align-items: center;
-  padding: 10px 18px; border-radius: 10px; font-size: 14px; font-weight: 600;
+.qr-btn {
+  background: #2e7d32; color: #fff;
+  display: inline-flex; align-items: center; gap: 6px;
 }
-.pdf-btn:hover { opacity: 0.9; }
+.qr-btn:hover { opacity: 0.92; }
+.action-btn {
+  background: #5d4a36; color: #fff; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 16px; border-radius: 10px; font-size: 14px; font-weight: 600;
+}
+.action-btn:hover { opacity: 0.92; }
 .head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .menu-empty { line-height: 2; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
@@ -303,21 +307,24 @@ onMounted(() => { load(); loadOrders() })
 .cover-fallback { font-size: 40px; cursor: pointer; }
 .want-btn {
   position: absolute; bottom: 8px; left: 8px;
-  background: rgba(0, 0, 0, 0.55); color: #fff;
+  background: rgba(0, 0, 0, 0.5); color: #fff;
   border-radius: 16px; padding: 4px 12px;
   font-size: 13px; font-weight: 600;
-  backdrop-filter: blur(4px);
+  display: inline-flex; align-items: center; gap: 4px;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
 }
-.want-btn.on { background: var(--brand); }
+.want-btn.on { background: var(--brand-grad); box-shadow: 0 2px 8px rgba(229, 83, 60, 0.35); }
+.want-btn.on :deep(.icon) { fill: currentColor; }
 .off-btn {
   position: absolute; top: 8px; right: 8px;
-  background: rgba(0, 0, 0, 0.5); color: #fff;
-  border-radius: 50%; width: 28px; height: 28px;
+  background: rgba(0, 0, 0, 0.42); color: #fff;
+  border-radius: 10px; width: 30px; height: 30px;
   padding: 0; font-size: 14px;
   display: none; align-items: center; justify-content: center;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
 }
 .menu-card:hover .off-btn { display: inline-flex; }
-.off-btn:hover { background: #d33; }
+.off-btn:hover { background: #d33; opacity: 1; }
 .body { padding: 12px 14px; }
 .title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 7px; }
 .title-row h3 { font-size: 15.5px; font-weight: 700; color: #2f2a24; cursor: pointer; flex: 1; min-width: 0; }
