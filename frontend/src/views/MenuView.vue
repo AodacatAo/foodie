@@ -73,7 +73,7 @@
               class="cat-chip"
               :class="{ set: r.menu_category, editing: editingCat === r.id }"
               @click.stop.prevent="toggleCatEdit(r)"
-            >{{ r.menu_category ? `🏷 ${r.menu_category}` : '＋ 分类' }}</span>
+            >{{ r.menu_category ? r.menu_category : '＋ 分类' }}</span>
             <div v-if="editingCat === r.id" class="cat-picker" @click.stop>
               <button
                 v-for="c in presetCats" :key="c"
@@ -105,7 +105,7 @@
         </div>
         <div v-if="o.status !== 'served'" class="order-actions">
           <button v-if="o.status === 'pending'" class="chip-mini advance" @click="advanceOrder(o, 'making')">👨‍🍳 开始制作</button>
-          <button v-else-if="o.status === 'making'" class="chip-mini advance" @click="advanceOrder(o, 'served')">✅ 上菜</button>
+          <button v-else-if="o.status === 'making'" class="chip-mini advance" @click="advanceOrder(o, 'served')"><Icon name="check" :size="12" /> 上菜</button>
         </div>
       </div>
     </div>

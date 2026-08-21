@@ -52,7 +52,7 @@
 
     <!-- 底部购物车栏 -->
     <div class="order-bar" :class="{ active: cartOpen }" @click="cartOpen = true">
-      <div class="cart-icon" :class="{ on: orderedCount }">🛒</div>
+      <div class="cart-icon" :class="{ on: orderedCount }"><Icon name="cart" :size="20" /></div>
       <div class="order-summary">
         <template v-if="orderedCount">
           <span>已点 <b>{{ orderedCount }}</b> 道 / {{ totalQty }} 份</span>
@@ -68,7 +68,7 @@
       <div v-if="cartOpen" class="cart-panel">
         <div class="cart-head">
           <h3>已点菜品</h3>
-          <button class="ghost clear-btn" @click="clearAll">🗑 清空</button>
+          <button class="ghost clear-btn" @click="clearAll"><Icon name="trash" :size="13" /> 清空</button>
         </div>
         <div v-if="!ordered.length" class="cart-empty-list muted">还没有点菜</div>
         <div v-for="r in ordered" :key="r.id" class="cart-item">
@@ -119,6 +119,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { api, mediaUrl } from '../api'
+import Icon from '../components/Icon.vue'
 
 const CART_KEY = 'foodie_cart_v1'
 const items = ref([])
