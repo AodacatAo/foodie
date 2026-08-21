@@ -293,181 +293,21 @@ foodie/
 
 ---
 
-# 模块二：美食收藏（餐厅库）
+# 模块二：美食收藏（餐厅库）—— 已整体移除（2026-08）
 
-> 状态：v1 设计稿（2025）
-> 目标：收藏爱吃的店；出门吃饭时按菜系/人均/评分/距离/吃过次数快速选店；每次吃完记录。
+餐厅库模块（大众点评抓取 + 收藏/评分/距离/就餐记录）已应要求**整体移除**：
 
-## 1. 核心决策（已与用户确认）
-
-| 决策点 | 选择 |
-|---|---|
-| 数据录入 | **手动录入为主** + 大众点评抓取 spike 验证（可行再接入） |
-| 平台优先 | 大众点评（菜系/人均/评分数据全） |
-| 距离 | 浏览器定位 + 常用位置（家/公司）；距离前端本地计算显示 |
-| 就餐记录 | 次数 + 日期 + 备注 + 实付人均 + 个人评分 |
-| 定位技术 | haversine 距离；店铺坐标来自抓取数据或高德地理编码兜底 |
-
-## 2. 数据模型
-
-```sql
-restaurants                          visit_logs
-┌───────────────────────────┐        ┌────────────────────────────┐
-│ id (PK)                   │        │ id (PK)                    │
-│ name                      │        │ restaurant_id (FK, 级联删) │
-│ cuisine       菜系         │        │ visited_at   日期          │
-│ address                   │        │ note         备注          │
-│ lat / lng     坐标         │        │ rating       个人打分 1-5   │
-│ price_per_person 人均     │        │ cost_per_person 实付人均    │
-│ rating        平台评分     │        │ created_at                 │
-│ cover_image               │        └────────────────────────────┘
-│ source_url / source_shop_id
-│ source_platform  dianping/meituan/manual
-│ tags JSON
-│ status  draft/published    -- 抓取来的进草稿，手动录入直接发布
-│ visit_count / last_visited_at  -- 冗余聚合，记录时更新
-│ (FTS 冗余列: name/cuisine/address/tags_text)
-│ created_at / updated_at
-└───────────────────────────┘
-
-user_locations（常用位置，少量固定点）
-  id, name(如"家"/"公司"), lat, lng
-```
-
-**设计要点**：
-- `visit_count` / `last_visited_at` 冗余在餐厅表，写 `visit_logs` 时事务内同步更新，列表排序免聚合查询。
-- 删除餐厅时 `visit_logs` 级联删除（SQLite FK ON DELETE CASCADE）。
-- 店铺坐标是距离功能的根基：抓取时从平台数据直接拿（点评数据含经纬度）；手动录入时可选高德地理编码 API 解析（需用户自备 key，可选功能）。
-
-## 3. 距离与排序（前端本地计算）
-
-- 个人量级（几百家店）列表接口一次返回全部 published 店，**前端本地**完成：
-  - 当前位置：浏览器 `navigator.geolocation`（localhost 为 secure context 可用）→ 失败则用户手动输入/选择常用位置
-  - 距离：haversine 公式（前端实现，~20 行）
-  - 筛选：菜系 / 人均区间 / 评分下限 / 距离上限 / 是否吃过
-  - 排序：距离 / 人均 / 评分 / 最近吃过 / 吃过次数
-- 搜索仍走服务端 FTS（店名/菜系/地址），其余筛选排序全部本地。
-
-## 4. 大众点评抓取 spike（可行性验证，先不承诺）
-
-复用模块一的 Playwright 模式，验证目标：
-1. 店页面是否含内嵌数据（`__INITIAL_STATE__` 或 SSR JSON）→ 店名/菜系/人均/评分/坐标/图
-2. 点评反爬强度（滑块验证、x-signature 签名）是否影响无头抓取
-3. 结论：可行 → 接入链接导入（草稿流）；不可行 → 保持手动录入兜底
-
-风险与对策：点评反爬显著强于小红书，spike 失败属预期；手动录入表单（店名/菜系/人均/评分/地址）保证流程不依赖抓取。
-
-## 5. API 设计
-
-```
-GET    /api/restaurants?q=&tag=&status=   列表（FTS 搜索 + 过滤，含坐标）
-GET    /api/restaurants/{id}              详情（含最近 N 条就餐记录）
-POST   /api/restaurants                   手动录入（直接 published）
-PUT    /api/restaurants/{id}              编辑
-DELETE /api/restaurants/{id}              删除（级联删记录）
-POST   /api/restaurants/{id}/publish      草稿确认
-GET    /api/restaurants/{id}/visits       就餐记录列表
-POST   /api/restaurants/{id}/visits       记录一次 {visited_at, note, rating, cost_per_person}
-DELETE /api/visits/{id}                   删除误记
-GET    /api/restaurants/tags              标签聚合
-GET/POST/PUT/DELETE /api/locations        常用位置
-```
-
-## 6. 前端页面
-
-| 页面 | 功能 |
-|---|---|
-| 餐厅库 `/restaurants` | 筛选栏（菜系/人均/评分/距离/是否吃过）+ 排序（距离/人均/评分/最近吃过/次数）+ 卡片（封面、菜系、人均、评分、距离 km、吃过 N 次） |
-| 餐厅详情 `/restaurant/:id` | 信息卡（地址/人均/评分/平台链接）、**就餐记录时间线**（日期/备注/评分/实付）、「🍽 记录一次」按钮、编辑/删除 |
-| 录入 `/restaurant/new` | 手动表单；未来加点评链接导入 |
-| 设置 `/settings` | 常用位置管理（家/公司，地图点选或经纬度输入） |
-
-## 7. 里程碑
-
-| 阶段 | 内容 | 验收标准 |
-|---|---|---|
-| **N1 骨架** | restaurants/visit_logs 模型 + CRUD + 手动录入 + 列表筛选排序（距离先用常用位置/手动位置） | 手动录入 3 家店，可按菜系/人均排序 |
-| **N2 定位** | 浏览器定位 + haversine 距离显示排序 + 常用位置管理 | 打开页面自动显示"距当前位置 x.x km" |
-| **N3 记录** | 就餐记录 + 次数聚合 + 时间线展示 | 记录 5 次后详情页时间线正确、列表显示"吃过 5 次" |
-| **N4 spike** | 大众点评抓取验证（可选接入） | 结论文档：可行/不可行 + 证据 |
-| **N5 打磨** | 前端打磨、README、备份覆盖新表 | 日常可用 |
-
-## 8. 复用与扩展
-
-- 复用模块一：FastAPI 单体结构、SQLite+FTS、Vue3 前端、Playwright 抓取模式、草稿确认流（抓取数据进草稿）
-- 顶部导航新增「餐厅库」入口
-- 可选增强（暂不做）：地图视图（Leaflet + OSM 免费瓦片）、随机推荐"今天吃什么"（结合次数/距离）
-
----
-
-## 模块二 · 实施记录（N1-N5）
-
-### 里程碑状态
-
-| 阶段 | 状态 | 备注 |
-|---|---|---|
-| N1 骨架 | ✅ 完成 | 模型/CRUD/手动录入/筛选排序，冒烟测试通过 |
-| N2 定位 | ✅ 完成 | 自动定位(静默失败可手动)/精度提示/距离筛选/详情页距离 |
-| N3 记录 | ✅ 完成 | 记录一次(日期/评分/实付/备注)/时间线/次数聚合/统计(平均评分/实付) |
-| N4 spike | ✅ 完成 | 点评匿名可抓封面/店名/评分/人均/菜系/地址；坐标不可靠 |
-| N5 打磨 | ✅ 完成 | 加载态/空态/README/备份覆盖 |
-
-### 大众点评抓取 spike 结论（2025）
-
-**可行项**（匿名即可，无需登录）：
-- 店铺页 `og:image` → **封面图**（p0.meituan.net CDN，可下载）
-- 页面标题 → 店名（【】内）、菜系（"XX地区YY菜系团购"段）
-- 页面文本 → 评分（★★★★★ 4.6）、人均（¥101/人）、地址（部分脱敏 xx路13******）
-- 页面无验证码、无 IP 风险拦截（UA 伪装 + 无头 Chrome）
-
-**不可行项**：
-- 坐标：移动端页面不提供可靠坐标（lat/lng 请求参数恒为 0）；shopservice 接口参数复杂且非必需不请求
-- 结论：**接入"链接→信息+封面"同步流**（`/api/restaurants/sync-info` + 编辑器一键抓取），坐标仍由用户提供或手动录入
-
-**抓取流程**：编辑/录入时贴点评链接 → 点「🔄 从点评抓取」→ 预填店名/菜系/人均/评分/地址/封面 → 保存时封面下载到 `media/restaurants/{id}-{时间戳}.jpg`。
-
-**媒体缓存策略（2026-08 修正）**：`/media` 响应带 `Cache-Control: immutable` 长缓存；封面/推荐菜这类**内容可换**的图片文件名带时间戳（新内容 = 新路径 = 新 URL，浏览器自动拉新），废除前端手工 `?v=N` 版本号；同步推荐菜前清空该餐厅旧图目录，避免孤儿文件累积。步骤图/上传图等**内容不变**的资源沿用稳定文件名。
-
-### 封面策略（最终）
-1. 点评链接抓取 → 点评封面图（优先）
-2. 手动贴图片 URL → 下载
-3. 都没有 → 本地自动生成（菜系渐变 + emoji + 店名），保证每店有图
-
-### 访问方式（2025 迭代）
-
-| 方式 | 地址 | 说明 |
-|---|---|---|
-| 本机 | http://127.0.0.1:8080 | 始终可用 |
-| 局域网 | http://<电脑IP>:8080（启动时打印，设置页可查） | 服务监听 0.0.0.0；手机需同一 Wi-Fi |
-
-**访问密码**：`.env` 配 `ACCESS_TOKEN` 后，**只有非局域网请求需要登录**（按 `Cf-Connecting-Ip` 判断真实客户端 IP，公网 IP 才要求密码）；局域网/本机直连一律免登录。登录一次 Cookie 有效 1 年（`POST /api/login`）。前端 401 时弹出登录遮罩。当前未接公网隧道，鉴权保持防御性保留。
-
-**移动端**：≤768px 时顶部导航切换为底部 Tab 栏（菜谱/餐厅/导入/草稿/设置）；卡片两列、筛选栏两列、表单单列；局域网 http 下浏览器禁用 GPS → 按出口 IP 网络定位兜底（ipinfo.io → ip-api.com 双源）。
-
-**已知坑**：
-- `socket.getaddrinfo(本机.local)` 在部分网络会挂起 → `/api/net` 与 start.sh 用 `ipconfig getifaddr` + 线程超时
-- macOS 防火墙首次会询问是否允许 Python 接收连接，需点允许；路由器开 AP 隔离会挡设备互访
-
-### NAS 容器化部署（QNAP <NAS-IP>，常驻服务）
-
-**结构**（`/share/ZFS2_DATA/foodie`）：
-- `Dockerfile` + `docker-compose.yml`：`foodie`（应用，端口 8080，卷挂 `./data:/app/backend/data`；公网隧道已移除，仅局域网访问）
-- 数据（DB/媒体/whisper 模型/浏览器登录态）全部在 `./data`，重建容器不丢
-- **配置不进镜像（2026-08 安全加固）**：`.env` 只在 NAS 宿主机目录，compose `env_file` 运行时注入环境变量；Dockerfile 不再 `COPY .env`，`.dockerignore` 排除 `.env`——密钥不会固化在镜像层
-- 镜像内 `playwright install chrome`（npmmirror 加速）满足 `channel="chrome"`；容器内 root 运行 → 爬虫启动参数 `chromium_sandbox=(os.geteuid() != 0)`
-
-**部署**：`NAS_PASS='<nas密码>' python3 scripts/deploy_qnap.py all`（pack→upload→extract→build→up）。
-- compose 显式 `image: foodie:latest`：build 阶段打 tag 后 `compose up -d` 能检测到镜像变化并自动重建容器（否则 compose 默认镜像名 `foodie-foodie` 与 build 产物无关，新代码永远不生效——2026-08 部署时踩坑后修正）
-- QNAP 未启用 SFTP 子系统 → 上传走 SSH exec 通道流式 tar
-- docker CLI 全路径 `/share/ZFS1_DATA/.qpkg/container-station/bin/docker`
-- 数据库迁移用 sqlite `backup()` API 做一致性快照（服务器运行中也安全）
-- **NAS 数据备份（2026-08 复盘后补上）**：此前 NAS 侧无任何备份机制（无 HBS3/HybridBackup、无快照计划）。现由 `scripts/nas_backup.sh` + crontab（每日 04:15，deploy 幂等安装）备份到异池 `/share/ZFS19_DATA/foodie-backups`（zpool3 ≠ zpool1，池级故障隔离）：DB 走容器内 sqlite backup API（运行中安全），media/snapshots/models 用 rsync `--link-dest` 与上一份硬链接去重（跨池不能硬链接源文件，去重只发生在目标池内），wechat-notify 凭据一并覆盖，保留 14 天 + `latest/` 软链
-- **数据库结构演进（2026-08）**：版本化迁移 `backend/app/migrations.py` —— `schema_migrations` 表记录已应用版本，启动时事务内按序执行未应用项；约定「只增不改」、回填用 NULL/默认值守卫、每个迁移只执行一次（全新建库重放无害）。新增列/回填一律走迁移，废除 init_db 手工补丁式 `_add_column_if_missing`
-- 登录态与数据迁移后，Mac 端服务应停止，避免两份数据分叉
-
-**访问**：局域网 `http://<NAS-IP>:8080`（免密）。公网访问已移除（2026-08）；如未来需要可重新引入内网穿透方案，鉴权中间件已保留（`Cf-Connecting-Ip` 判断 + `ACCESS_TOKEN`）。
-- Mac 端不再常驻运行（避免双数据源）；临时用可 `./scripts/start.sh`，数据以 NAS 为准
-
+- 后端：`routers/restaurants.py`、`routers/locations.py`、`services/restaurant_service.py`、
+  `services/dianping_client.py`、`services/amap_client.py`、`services/cover_service.py`
+  （字体辅助提取为独立 `services/fonts.py`，供分享卡片继续使用）全部删除；
+  `Restaurant/VisitLog/UserLocation` 模型、`restaurants_fts` 虚拟表与触发器、相关 schema、
+  `AMAP_KEY` 配置、`zhconv` 依赖一并移除
+- 前端：餐厅列表/详情/录入三页面与 RestaurantEditor 组件、路由、导航入口、API 函数删除；
+  设置页「常用位置」卡片删除（局域网访问/关于保留）
+- 脚本：`dianping_login.py`、`backfill_dishes.py` 删除
+- 数据：NAS 上 restaurants/visit_logs/user_locations 旧表与 media/restaurants、media/dishes、
+  media/uploads 旧文件**保留不动**（如需彻底清理另行处理）
+- 迁移：历史迁移 v2 加表存在性守卫，全新建库不再创建餐厅相关表也能通过
 
 ### 模块三 · 菜单/点餐（2026-08）
 
@@ -507,7 +347,7 @@ GET/POST/PUT/DELETE /api/locations        常用位置
 | P0-1 密钥入镜像 | `.env` 曾被打进镜像层（Dockerfile `COPY .env`） | 移除 COPY + `.dockerignore` 排除 `.env`；配置改由 compose `env_file` 运行时注入（宿主目录 `.env`） |
 | P0-2 购物车位置 | 购物车原存服务端 `recipes.menu_qty`，多手机互相串扰、并发下单重复快照；且启动时无条件 `UPDATE menu_qty=1 WHERE menu_want=1` 会把「想吃」强行塞回购物车 | 购物车迁移到**每台设备前端 localStorage**；下单改前端提交明细、服务端按当前菜单校验 + 服务端价格快照；`menu_want` 回归纯管理端意愿标记；启动时无条件 UPDATE 删除；废弃的 `/order` 端点与 `menu_qty` 输出字段移除（列保留兼容） |
 | P1-1 迁移机制 | 加列靠 init_db 手工补丁（`_add_column_if_missing`），无版本记录 | `backend/app/migrations.py`：`schema_migrations` 表 + 版本化迁移（只增不改、防重复写法），init_db 事务内按序执行 |
-| P1-2 媒体缓存 | 前端 `?v=3` 手工版本号，改图忘 bump 就显示旧图 | 封面/推荐菜文件名带时间戳（新内容=新 URL），`mediaUrl` 去掉版本号；同步推荐菜前清空旧图目录 |
+| P1-2 媒体缓存 | 前端 `?v=3` 手工版本号，改图忘 bump 就显示旧图 | 内容可变图片（分享卡片等）文件名带时间戳（新内容=新 URL），`mediaUrl` 去掉版本号（原餐厅封面/推荐菜部分随模块二移除） |
 | P1-3 NAS 数据备份 | **盘点结果：此前无任何备份**（未装 HBS3/HybridBackup、无快照计划、qsnapshot 配置为空） | `scripts/nas_backup.sh` + crontab 每日 04:15（deploy 幂等安装）：DB 容器内 sqlite backup API 一致性快照、media/快照/模型 rsync `--link-dest` 去重、wechat-notify 凭据一并覆盖，备份到**异池** zpool3（`/share/ZFS19_DATA/foodie-backups`，14 天 + `latest/`）；首跑已验证 integrity ok |
 
 **部署侧连带修复（复盘验证时发现）**：

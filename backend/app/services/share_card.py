@@ -1,12 +1,12 @@
 """菜谱分享卡片：PIL 合成竖向长图（标题/封面/食材/步骤+配图/页脚）。
 
 输出 media/share/{recipe_id}-{时间戳}.png（新内容=新 URL，沿用 immutable 缓存策略），
-同菜谱旧卡片自动清理。中文渲染依赖 cover_service.pick_font（本机 PingFang / 容器 wqy-microhei）。
+同菜谱旧卡片自动清理。中文渲染依赖 fonts.pick_font（本机 PingFang / 容器 wqy-microhei）。
 """
 import time
 
 from ..config import settings
-from .cover_service import pick_font
+from .fonts import pick_font
 
 CARD_W = 750
 PAD = 40

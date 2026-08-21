@@ -33,9 +33,6 @@ class Settings(BaseSettings):
     # 小红书抓取（M2）
     xhs_cookie: str | None = None
 
-    # 高德地图 Web服务（餐厅按名搜索/地址转坐标）
-    amap_key: str | None = None
-
     # 微信通知独立服务（解耦）：下单等事件经 HTTP 推送到 wechat-notify 容器
     wechat_notify_url: str | None = None  # 如 http://wechat-notify:8090/notify
     notify_token: str | None = None       # 与独立服务的 NOTIFY_TOKEN 一致

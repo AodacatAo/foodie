@@ -24,14 +24,24 @@ def _m001_video_and_transcript(conn: Connection) -> None:
 
 
 def _m002_restaurant_rating_dishes_photos(conn: Connection) -> None:
-    """餐厅：我的评分、推荐菜、就餐照片；旧数据 NULL → 空列表。"""
-    _add_column_if_missing(conn, "restaurants", "my_rating", "FLOAT")
-    _add_column_if_missing(conn, "restaurants", "recommended_dishes", "JSON")
-    _add_column_if_missing(conn, "visit_logs", "photos", "JSON")
-    conn.exec_driver_sql(
-        "UPDATE restaurants SET recommended_dishes = '[]' WHERE recommended_dishes IS NULL"
-    )
-    conn.exec_driver_sql("UPDATE visit_logs SET photos = '[]' WHERE photos IS NULL")
+    """餐厅：我的评分、推荐菜、就餐照片；旧数据 NULL → 空列表。
+
+    2026-08 起餐厅库模块已整体移除（表不再由 create_all 创建）：迁移保留历史版本，
+    但需检测表是否存在——对全新建库（无 restaurants 表）直接跳过。
+    """
+    tables = {row[0] for row in conn.exec_driver_sql(
+        "SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+    if "restaurants" not in tables and "visit_logs" not in tables:
+        return
+    if "restaurants" in tables:
+        _add_column_if_missing(conn, "restaurants", "my_rating", "FLOAT")
+        _add_column_if_missing(conn, "restaurants", "recommended_dishes", "JSON")
+        conn.exec_driver_sql(
+            "UPDATE restaurants SET recommended_dishes = '[]' WHERE recommended_dishes IS NULL"
+        )
+    if "visit_logs" in tables:
+        _add_column_if_missing(conn, "visit_logs", "photos", "JSON")
+        conn.exec_driver_sql("UPDATE visit_logs SET photos = '[]' WHERE photos IS NULL")
 
 
 def _m003_menu_ordering(conn: Connection) -> None:

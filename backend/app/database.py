@@ -59,33 +59,7 @@ CREATE TRIGGER IF NOT EXISTS recipes_au AFTER UPDATE ON recipes BEGIN
   VALUES (new.id, new.title, new.description, new.ingredients_text, new.steps_text, new.tags_text);
 END
 """,
-    # ---- 模块二：餐厅 FTS ----
-    f"""
-CREATE VIRTUAL TABLE IF NOT EXISTS restaurants_fts USING fts5(
-  name, cuisine, address, tags_text,
-  content='restaurants', content_rowid='id', tokenize='{FTS_TOKENIZER}'
-)
-""",
-    """
-CREATE TRIGGER IF NOT EXISTS restaurants_ai AFTER INSERT ON restaurants BEGIN
-  INSERT INTO restaurants_fts(rowid, name, cuisine, address, tags_text)
-  VALUES (new.id, new.name, new.cuisine, new.address, new.tags_text);
-END
-""",
-    """
-CREATE TRIGGER IF NOT EXISTS restaurants_ad AFTER DELETE ON restaurants BEGIN
-  INSERT INTO restaurants_fts(restaurants_fts, rowid, name, cuisine, address, tags_text)
-  VALUES ('delete', old.id, old.name, old.cuisine, old.address, old.tags_text);
-END
-""",
-    """
-CREATE TRIGGER IF NOT EXISTS restaurants_au AFTER UPDATE ON restaurants BEGIN
-  INSERT INTO restaurants_fts(restaurants_fts, rowid, name, cuisine, address, tags_text)
-  VALUES ('delete', old.id, old.name, old.cuisine, old.address, old.tags_text);
-  INSERT INTO restaurants_fts(rowid, name, cuisine, address, tags_text)
-  VALUES (new.id, new.name, new.cuisine, new.address, new.tags_text);
-END
-""",
+    # 餐厅库 FTS（restaurants_fts）已随模块二移除（2026-08）；线上旧表保留不动
 ]
 
 

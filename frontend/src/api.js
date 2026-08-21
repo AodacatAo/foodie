@@ -44,39 +44,6 @@ export const api = {
   submitManual: (data) => req('/imports/manual', { method: 'POST', body: JSON.stringify(data) }),
   submitXhs: (url) => req('/imports', { method: 'POST', body: JSON.stringify({ url }) }),
   getTask: (id) => req(`/imports/${id}`),
-  // ---- 餐厅库 ----
-  listRestaurants: (params = {}) => req(`/restaurants?${new URLSearchParams(params)}`),
-  getRestaurant: (id) => req(`/restaurants/${id}`),
-  createRestaurant: (data) => req('/restaurants', { method: 'POST', body: JSON.stringify(data) }),
-  updateRestaurant: (id, data) => req(`/restaurants/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteRestaurant: (id) => req(`/restaurants/${id}`, { method: 'DELETE' }),
-  publishRestaurant: (id) => req(`/restaurants/${id}/publish`, { method: 'POST' }),
-  syncDishes: (id) => req(`/restaurants/${id}/sync-dishes`, { method: 'POST' }),
-  setMyRating: (id, my_rating) => req(`/restaurants/${id}/rating`, { method: 'POST', body: JSON.stringify({ my_rating }) }),
-  uploadImage: async (file) => {
-    const form = new FormData()
-    form.append('file', file)
-    const res = await fetch('/api/restaurants/upload', { method: 'POST', body: form })
-    if (res.status === 401) {
-      onUnauthorized()
-      throw new Error('需要登录')
-    }
-    if (!res.ok) {
-      let msg = res.statusText
-      try { msg = (await res.json()).detail || msg } catch { /* ignore */ }
-      throw new Error(msg)
-    }
-    return res.json()
-  },
-  syncDianping: (url) => req('/restaurants/sync-info', { method: 'POST', body: JSON.stringify({ url }) }),
-  searchShops: (keyword) => req('/restaurants/search-shops', { method: 'POST', body: JSON.stringify({ keyword }) }),
-  listVisits: (id) => req(`/restaurants/${id}/visits`),
-  addVisit: (id, data) => req(`/restaurants/${id}/visits`, { method: 'POST', body: JSON.stringify(data) }),
-  updateVisit: (id, data) => req(`/restaurants/visits/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteVisit: (id) => req(`/restaurants/visits/${id}`, { method: 'DELETE' }),
-  listLocations: () => req('/locations'),
-  createLocation: (data) => req('/locations', { method: 'POST', body: JSON.stringify(data) }),
-  deleteLocation: (id) => req(`/locations/${id}`, { method: 'DELETE' }),
   netInfo: () => req('/net'),
   createOrder: (data) => req('/orders', { method: 'POST', body: JSON.stringify(data) }),
   listOrders: (params = {}) => req(`/orders?${new URLSearchParams(params)}`),

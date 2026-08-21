@@ -6,9 +6,6 @@ const MenuView = () => import('./views/MenuView.vue')
 const OrderView = () => import('./views/OrderView.vue')
 const RecipeDetail = () => import('./views/RecipeDetail.vue')
 const ImportView = () => import('./views/ImportView.vue')
-const RestaurantList = () => import('./views/RestaurantList.vue')
-const RestaurantDetail = () => import('./views/RestaurantDetail.vue')
-const RestaurantNew = () => import('./views/RestaurantNew.vue')
 const SettingsView = () => import('./views/SettingsView.vue')
 
 export default createRouter({
@@ -19,9 +16,6 @@ export default createRouter({
     { path: '/order', name: 'order', component: OrderView, meta: { hideNav: true } },
     { path: '/recipe/:id', name: 'detail', component: RecipeDetail },
     { path: '/import', name: 'import', component: ImportView },
-    { path: '/restaurants', name: 'restaurants', component: RestaurantList },
-    { path: '/restaurant/new', name: 'restaurant-new', component: RestaurantNew },
-    { path: '/restaurant/:id', name: 'restaurant-detail', component: RestaurantDetail },
     { path: '/settings', name: 'settings', component: SettingsView },
   ],
 })
