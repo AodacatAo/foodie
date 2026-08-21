@@ -307,11 +307,11 @@ onMounted(() => { load(); loadOrders() })
 .cover-fallback { font-size: 40px; cursor: pointer; }
 .want-btn {
   position: absolute; bottom: 8px; left: 8px;
-  background: rgba(0, 0, 0, 0.5); color: #fff;
+  background: rgba(28, 24, 20, 0.55); color: #fff;
   border-radius: 16px; padding: 4px 12px;
   font-size: 13px; font-weight: 600;
   display: inline-flex; align-items: center; gap: 4px;
-  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
 }
 .want-btn.on { background: var(--brand-grad); box-shadow: 0 2px 8px rgba(229, 83, 60, 0.35); }
 .want-btn.on :deep(.icon) { fill: currentColor; }
@@ -391,6 +391,12 @@ onMounted(() => { load(); loadOrders() })
 
 /* ---- 移动端 ---- */
 @media (max-width: 768px) {
+  .head { flex-direction: column; align-items: stretch; gap: 10px; }
+  .head h1 { font-size: 20px; }
+  .head-actions { width: 100%; flex-wrap: nowrap; }
+  .head-actions .action-btn, .head-actions .qr-btn {
+    flex: 1; justify-content: center; width: auto; padding: 10px 8px;
+  }
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .cover { height: 96px; }
   .cover-fallback { font-size: 32px; }
@@ -398,6 +404,5 @@ onMounted(() => { load(); loadOrders() })
   .body { padding: 8px 10px; }
   .title-row h3 { font-size: 14px; }
   .price { font-size: 13.5px; }
-  .qr-btn { width: 100%; }
 }
 </style>
