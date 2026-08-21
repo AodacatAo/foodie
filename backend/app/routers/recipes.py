@@ -37,14 +37,12 @@ def list_tags(db: Session = Depends(get_db)):
 @router.get("/menu.pdf")
 def menu_pdf(origin: str = "", db: Session = Depends(get_db)):
     """打印版菜单 PDF（上架菜品，A4 双栏 + 扫码点餐二维码）。"""
-    recipes = (
-        db.query(Recipe)
-        .filter(Recipe.on_menu.is_(True))
-        .order_by(Recipe.menu_category, Recipe.id)
-        .all()
-    )
+    recipes = db.query(Recipe).filter(Recipe.on_menu.is_(True)).all()
     if not recipes:
         raise HTTPException(404, "菜单是空的，先上架几道菜")
+    # 分类按预设菜单顺序（热菜/凉菜/汤/主食/小吃/饮品/甜品），自定义分类殿后
+    preset = {c: i for i, c in enumerate(["热菜", "凉菜", "汤", "主食", "小吃", "饮品", "甜品"])}
+    recipes.sort(key=lambda r: (preset.get(r.menu_category or "其他", 100), r.menu_category or "其他", r.id))
     pdf_bytes = build_menu_pdf(recipes, origin)
     return Response(
         content=pdf_bytes,
