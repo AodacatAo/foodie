@@ -221,12 +221,17 @@ def up(conn):
 
 
 def _ensure_backup_cron(conn):
-    """把 nas_backup.sh 挂进 crontab（每日 04:15，异池备份）。已存在则跳过。"""
+    """把 nas_backup.sh 挂进 crontab（每日 04:15，异池备份）。已存在则跳过。
+
+    QNAP 的 crond 以 `-c /tmp/cron/crontabs`（tmpfs）运行：只改 /etc/config/crontab 不生效
+    （2026-08-21 实测 04:15 任务没跑），必须用 `crontab /etc/config/crontab` 安装进运行中 crond。
+    """
     cron_line = "15 4 * * * /share/ZFS2_DATA/foodie/scripts/nas_backup.sh"
     cmd = (
         f"chmod +x {NAS_DIR}/scripts/nas_backup.sh; "
         f"if ! grep -qF '{cron_line}' /etc/config/crontab 2>/dev/null; then "
-        f"echo '{cron_line}' >> /etc/config/crontab && /etc/init.d/crond.sh restart; fi"
+        f"echo '{cron_line}' >> /etc/config/crontab; fi; "
+        f"crontab /etc/config/crontab"
     )
     out, err = ssh(conn, cmd, timeout=60)
     if err.strip():
